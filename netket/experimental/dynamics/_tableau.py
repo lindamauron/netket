@@ -6,7 +6,6 @@ from abc import abstractmethod
 from ._state import IntegratorState
 
 
-
 @dataclass
 class Tableau:
     r"""
@@ -18,7 +17,6 @@ class Tableau:
 
     order: tuple[int, int]
     """The order of the tableau"""
-
 
     @property
     @abstractmethod
@@ -38,7 +36,6 @@ class Tableau:
         """
         pass
 
-    
     @property
     @abstractmethod
     def error_order(self):
@@ -50,26 +47,15 @@ class Tableau:
             return None
         else:
             pass
-    
+
     @abstractmethod
     def step(
-        self,
-        f: Callable,
-        t: float,
-        dt: float,
-        y_t: Array,
-        state: IntegratorState
+        self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
         pass
 
     @abstractmethod
     def step_with_error(
-        self,
-        f: Callable,
-        t: float,
-        dt: float,
-        y_t: Array,
-        state: IntegratorState
+        self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
         pass
-    

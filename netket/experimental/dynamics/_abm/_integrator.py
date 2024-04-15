@@ -7,8 +7,12 @@ import jax.numpy as jnp
 import netket as nk
 from netket.utils.struct import dataclass
 
-from .._structures import maybe_jax_jit,LimitsType
-from .._integrator import Integrator,general_time_step_adaptive, general_time_step_fixed
+from .._structures import maybe_jax_jit, LimitsType
+from .._integrator import (
+    Integrator,
+    general_time_step_adaptive,
+    general_time_step_fixed,
+)
 from .._state import SolverFlags
 
 from ._tableau import TableauABM, expand_dim
@@ -24,20 +28,25 @@ def general_abm_adaptive(
     rtol: float,
     norm_fn: Callable,
     max_dt: Optional[float],
-    dt_limits: LimitsType, ### change to limtsDType
+    dt_limits: LimitsType,  ### change to limtsDType
 ):
-    state, flag = general_time_step_adaptive(tableau,f,state,atol,rtol,norm_fn,max_dt,dt_limits)
+    state, flag = general_time_step_adaptive(
+        tableau, f, state, atol, rtol, norm_fn, max_dt, dt_limits
+    )
 
+    last_f = f(state.t.value, state.y, stage=tableau.order + 2)
     return jax.lax.cond(
         flag,
         lambda _: state.replace(
-            y_history=jax.tree_map(lambda H, y : jnp.roll(H,1,axis=0).at[0].set(y), state.y_history, state.y),
-            t_history=jnp.roll(state.t_history,1,axis=0).at[0].set(state.t.value),
+            F_history=jax.tree_map(
+                lambda H, x: jnp.roll(H, 1, axis=0).at[0].set(x),
+                state.F_history,
+                last_f,
+            ),
         ),
         lambda _: state,
         None,
     )
-
 
 
 @partial(maybe_jax_jit, static_argnames=["f"])
@@ -47,13 +56,15 @@ def general_abm_fixed(
     state: ABMState,
     max_dt: Optional[float],
 ):
-    state = general_time_step_fixed(tableau,f,state,max_dt)
-    new_t = state.t.value
-    new_y = state.y
+    state = general_time_step_fixed(tableau, f, state, max_dt)
 
+    last_f = f(state.t.value, state.y, stage=tableau.order + 2)
     return state.replace(
-        y_history=jax.tree_map(lambda H, y : jnp.roll(H,1,axis=0).at[0].set(y), state.y_history, new_y),
-        t_history=jnp.roll(state.t_history,1,axis=0).at[0].set(new_t)
+        F_history=jax.tree_map(
+            lambda H, x: jnp.roll(H, 1, axis=0).at[0].set(x),
+            state.F_history,
+            last_f,
+        ),
     )
 
 
@@ -65,24 +76,24 @@ class ABMIntegrator(Integrator):
         super().__post_init__()
 
         history = expand_dim(self.y0, self.tableau.order)
-        history = jax.tree_map(lambda H,y: H.at[0].set( y ), history, self.y0)
+        history = jax.tree_map(
+            lambda H, x: H.at[0].set(x), history, self.f(self.t0, self.y0, stage=0)
+        )
 
         times = jnp.zeros(self.tableau.order)
-        times = times.at[0].set( self.t0 )
-        
+        times = times.at[0].set(self.t0)
+
         self._state = ABMState(
             step_no=0,
             step_no_total=0,
             t=nk.utils.KahanSum(self.t0),
             y=self.y0,
             y_history=history,
-            t_history=times,
             dt=self.initial_dt,
             last_norm=0.0 if self.use_adaptive else None,
             last_scaled_error=0.0 if self.use_adaptive else None,
             flags=SolverFlags(0),
         )
-
 
     def _do_step_fixed(self, state, max_dt=None):
         return general_abm_fixed(

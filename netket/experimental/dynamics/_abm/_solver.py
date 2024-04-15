@@ -1,7 +1,12 @@
 from . import _tableau as tb
 from .._integrator import IntegratorConfig
 from ._integrator import ABMIntegrator
-from .._structures import args_adaptive_docstring,args_fixed_dt_docstring,append_docstring
+from .._structures import (
+    args_adaptive_docstring,
+    args_fixed_dt_docstring,
+    append_docstring,
+)
+
 
 class ABMConfig(IntegratorConfig):
     def __init__(self, dt, tableau, *, adaptive=False, **kwargs):
@@ -23,14 +28,13 @@ class ABMConfig(IntegratorConfig):
             **self.kwargs,
         )
 
+
 @append_docstring(args_fixed_dt_docstring)
 def ABM(dt, order):
     r"""
     The Adams-Bashforth-Moulton method of order s.
     """
     return ABMConfig(dt, tableau=tb.abm(order=order))
-
-
 
 
 @append_docstring(args_fixed_dt_docstring)
@@ -41,11 +45,9 @@ def AB(dt, order):
     return ABMConfig(dt, tableau=tb.ab(order=order))
 
 
-
 @append_docstring(args_adaptive_docstring)
-def adaptiveABM(dt, order,**kwargs):
+def adaptiveABM(dt, order, **kwargs):
     r"""
     The adaptive Adams-Bashforth-Moulton method of order s.
     """
-    return ABMConfig(dt, tableau=tb.abm(order=order), adaptive=True,**kwargs)
-
+    return ABMConfig(dt, tableau=tb.abm(order=order), adaptive=True, **kwargs)

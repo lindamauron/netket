@@ -33,6 +33,7 @@ def propose_time_step(
         limits[1],
     )
 
+
 def maybe_jax_jit(fun, *jit_args, **jit_kwargs):
     """
     Only jit if `config.netket_experimental_disable_ode_jit` is False.
@@ -99,7 +100,6 @@ def maximum_norm(x: Union[PyTree, Array]):
                 jax.tree_map(lambda x: jnp.max(jnp.abs(x)), x),
             )
         )
-
 
 
 def expand_dim(tree: PyTree, sz: int):

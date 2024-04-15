@@ -13,9 +13,22 @@ from netket.utils.types import Array, PyTree
 from netket.utils.numbers import dtype as _dtype
 
 from . import _tableau as rkt
-from .._structures import maybe_jax_jit, euclidean_norm, maximum_norm, scaled_error, propose_time_step, set_flag_jax, LimitsType
+from .._structures import (
+    maybe_jax_jit,
+    euclidean_norm,
+    maximum_norm,
+    scaled_error,
+    propose_time_step,
+    set_flag_jax,
+    LimitsType,
+)
 from .._state import SolverFlags, IntegratorState
-from .._integrator import general_time_step_adaptive, general_time_step_fixed, Integrator, IntegratorConfig
+from .._integrator import (
+    general_time_step_adaptive,
+    general_time_step_fixed,
+    Integrator,
+    IntegratorConfig,
+)
 
 
 @dataclass(_frozen=False)
@@ -42,7 +55,6 @@ class RKIntegrator(Integrator):
         )[0]
 
 
-
 class RKIntegratorConfig(IntegratorConfig):
 
     def __call__(self, f, t0, y0, *, norm=None):
@@ -57,6 +69,5 @@ class RKIntegratorConfig(IntegratorConfig):
             **self.kwargs,
         )
 
-
     def __repr__(self):
-        return "RK"+super().__repr__()
+        return "RK" + super().__repr__()

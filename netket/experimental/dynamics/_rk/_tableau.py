@@ -12,8 +12,6 @@ from .._state import IntegratorState
 default_dtype = jnp.float64
 
 
-
-
 @dataclass
 class TableauRKExplicit(Tableau):
     r"""
@@ -110,12 +108,7 @@ class TableauRKExplicit(Tableau):
         return k
 
     def step(
-        self,
-        f: Callable,
-        t: float,
-        dt: float,
-        y_t: Array,
-        state: IntegratorState
+        self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
         """Perform one fixed-size RK step from `t` to `t + dt`."""
         k = self._compute_slopes(f, t, dt, y_t)
@@ -132,12 +125,7 @@ class TableauRKExplicit(Tableau):
         return y_tp1
 
     def step_with_error(
-        self,
-        f: Callable,
-        t: float,
-        dt: float,
-        y_t: Array,
-        state: IntegratorState
+        self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
         """
         Perform one fixed-size RK step from `t` to `t + dt` and additionally return the

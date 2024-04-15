@@ -26,7 +26,7 @@ __all__ = [
     "RK45",
     "AB",
     "ABM",
-    "adaptiveABM"
+    "adaptiveABM",
 ]
 
 from ._integrator import Integrator, IntegratorConfig

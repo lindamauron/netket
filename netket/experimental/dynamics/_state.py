@@ -7,6 +7,7 @@ import netket as nk
 from netket.utils.struct import dataclass, field
 from netket.utils.types import Array, PyTree
 
+
 class SolverFlags(IntFlag):
     """
     Enum class containing flags for signaling solver information from within `jax.jit`ed code.
@@ -75,4 +76,3 @@ class IntegratorState:
     @property
     def accepted(self):
         return SolverFlags.INFO_STEP_ACCEPTED & self.flags != 0
-    
