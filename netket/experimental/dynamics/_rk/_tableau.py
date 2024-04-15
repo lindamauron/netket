@@ -1,17 +1,3 @@
-# Copyright 2021 The NetKet Authors - All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from typing import Callable, Optional
 
 import jax
@@ -19,24 +5,17 @@ import jax.numpy as jnp
 
 from netket.utils.struct import dataclass
 from netket.utils.types import Array, PyTree
+from .._structures import expand_dim
+from .._tableau import Tableau
+from .._state import IntegratorState
 
 default_dtype = jnp.float64
 
 
-def expand_dim(tree: PyTree, sz: int):
-    """
-    creates a new pytree with same structure as input `tree`, but where very leaf
-    has an extra dimension at 0 with size `sz`.
-    """
-
-    def _expand(x):
-        return jnp.zeros((sz, *x.shape), dtype=x.dtype)
-
-    return jax.tree_map(_expand, tree)
 
 
 @dataclass
-class TableauRKExplicit:
+class TableauRKExplicit(Tableau):
     r"""
     Class representing the Butcher tableau of an explicit Runge-Kutta method [1,2],
     which, given the ODE dy/dt = F(t, y), updates the solution as
@@ -136,6 +115,7 @@ class TableauRKExplicit:
         t: float,
         dt: float,
         y_t: Array,
+        state: IntegratorState
     ):
         """Perform one fixed-size RK step from `t` to `t + dt`."""
         k = self._compute_slopes(f, t, dt, y_t)
@@ -157,6 +137,7 @@ class TableauRKExplicit:
         t: float,
         dt: float,
         y_t: Array,
+        state: IntegratorState
     ):
         """
         Perform one fixed-size RK step from `t` to `t + dt` and additionally return the
@@ -302,5 +283,3 @@ bt_rk4_dopri  = TableauRKExplicit(
                 c_error = None,
                 )
 bt_rk4_dopri = NamedTableau("RK45", bt_rk4_dopri)
-
-# fmt: on

@@ -16,9 +16,9 @@ import pytest
 import numpy as np
 
 import jax
-import scipy.integrate as sci
+from functools import partial
 
-from netket.experimental.dynamics import Euler, Heun, Midpoint, RK4, RK12, RK23, RK45
+from netket.experimental.dynamics import Euler, Heun, Midpoint, RK4, RK12, RK23, RK45, ABM, AB, adaptiveABM
 from netket.experimental.dynamics._rk_tableau import (
     bt_feuler,
     bt_heun,
@@ -52,12 +52,15 @@ explicit_fixed_step_solvers = {
     "Heun": Heun,
     "Midpoint": Midpoint,
     "RK4": RK4,
+    "AB": partial(AB,order=4),
+    "ABM": partial(ABM,order=4)
 }
 
 explicit_adaptive_solvers = {
     "RK12": RK12,
     "RK23": RK23,
     "RK45": RK45,
+    "ABM":partial(adaptiveABM,order=4)
 }
 
 tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus.items()]
@@ -112,8 +115,7 @@ def test_ode_solver(method):
     y0 = np.array([1.0])
     times = np.linspace(0, n_steps * dt, n_steps, endpoint=False)
 
-    sol = sci.solve_ivp(ode, (0.0, n_steps * dt), y0, t_eval=times)
-    y_ref = sol.y[0]
+    y_ref = y0*np.exp(-t**2/2)
 
     solv = solver(ode, 0.0, y0)
 
@@ -135,6 +137,7 @@ def test_ode_solver(method):
     rtol = {
         "Euler": 1e-2,
         "RK4": 5e-4,
+        "ABM": 1e-5
     }.get(solver.tableau.name, 1e-3)
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=rtol)
 
@@ -159,7 +162,7 @@ def test_ode_repr():
         return 1
 
     _test_jit_repr(solv._rkstate)
-    # _test_jit_repr(solv) # this is broken. should be fixed in the zukumft
+    _test_jit_repr(solv) # this is broken. should be fixed in the zukumft
 
 
 def test_solver_t0_is_integer():
@@ -202,11 +205,9 @@ def test_adaptive_solver(solver):
             y_t.append(solv.y)
         solv.step()
     y_t = np.asarray(y_t)
+    t = np.asarray(t)
 
     # print(t)
-    sol = sci.solve_ivp(
-        ode, (0.0, 2.0), y0, t_eval=t, atol=0.0, rtol=tol, method="RK45"
-    )
-    y_ref = sol.y[0]
+    y_ref = y0*np.exp(-t**2/2)
 
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=1e-5)

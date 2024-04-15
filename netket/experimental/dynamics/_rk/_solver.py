@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import _rk_tableau as rkt
-from ._rk_solver_structures import RKIntegratorConfig
+from . import _tableau as rkt
+from ._solver_structures import RKIntegratorConfig
 
 args_fixed_dt_docstring = """
     Args:
