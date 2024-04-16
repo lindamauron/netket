@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import jax
 import jax.numpy as jnp

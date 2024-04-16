@@ -1,9 +1,7 @@
-import jax
 from netket.utils.struct import dataclass
-from netket.utils.types import Array, PyTree
+from netket.utils.types import Array
 
 from .._state import IntegratorState
-from .._structures import expand_dim
 
 
 @dataclass(_frozen=False)

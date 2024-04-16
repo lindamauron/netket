@@ -1,21 +1,21 @@
-from typing import Callable, Optional
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
 
 from netket.utils.struct import dataclass
-from netket.utils.types import Array, PyTree
+from netket.utils.types import Array
 from .._structures import expand_dim
 from .._tableau import Tableau
 from ._state import ABMState
 
 default_dtype = jnp.float64
 
-"""
+r"""
 To instantiate a Tableau for any order (not computeed yet), one first needs to find the coefficients :
 order = s
-\beta_{s+1-i} = \int_{0}^1 \prod_{l=0 ,l \n eq i}^q \frac{u+l}{l-i} du, i=1,\dots,s
-\alpha_{i} = \int_{-1}^0 \prod_{l=0 ,l \n eq i}^q \frac{u+l}{l-i} du, i=0,\dots,s-1
+:math: `\beta_{s+1-i} = \int_{0}^1 \prod_{l=0 ,l \n eq i}^q \frac{u+l}{l-i} du, i=1,\dots,s`
+:math: `\alpha_{i} = \int_{-1}^0 \prod_{l=0 ,l \n eq i}^q \frac{u+l}{l-i} du, i=0,\dots,s-1`
 
 then, instantiate as TableauABM(order=s, betas=jnp.array(betas), alphas=jnp.array(alphas))
 """
@@ -217,11 +217,9 @@ class TableauABM(Tableau):
         y_tilde = jax.tree_map(
             lambda y_t, F: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
-            * jnp.tensordot(
-                jnp.asarray(self.betas, dtype=y_t.dtype), F_history, axes=[0, 0]
-            ),
+            * jnp.tensordot(jnp.asarray(self.betas, dtype=y_t.dtype), F, axes=[0, 0]),
             y_t,
-            F,
+            F_history,
         )
 
         # now the corrector step
@@ -229,7 +227,7 @@ class TableauABM(Tableau):
             # change the forces with by adding the one extrapolated
             F = jax.tree_map(
                 lambda H, f_l: jnp.roll(H, 1, axis=0).at[0].set(f_l),
-                F,
+                F_history,
                 f(t + dt, y_tilde, stage=self.order),
             )
 

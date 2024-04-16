@@ -1,14 +1,13 @@
-from functools import partial, wraps
-from typing import Callable, Optional, Union
+from functools import partial
+from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
 
 import netket as nk
-from netket import config
 from netket.utils.mpi.primitives import mpi_all_jax
 from netket.utils.struct import dataclass, field
-from netket.utils.types import Array, PyTree
+from netket.utils.types import Array
 from netket.utils.numbers import dtype as _dtype
 
 from ._structures import (
@@ -18,7 +17,6 @@ from ._structures import (
     propose_time_step,
     set_flag_jax,
     euclidean_norm,
-    expand_dim,
 )
 from ._tableau import Tableau
 from ._state import IntegratorState, SolverFlags

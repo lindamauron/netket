@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 
 from netket.utils.struct import dataclass
-from netket.utils.types import Array, PyTree
+from netket.utils.types import Array
 from .._structures import expand_dim
 from .._tableau import Tableau
 from .._state import IntegratorState

@@ -41,7 +41,7 @@ from netket.experimental.dynamics._rk._tableau import (
     bt_rk4_fehlberg,
 )
 
-from netket.experimental.dynamics._abm._tableau import abm, ab
+from netket.experimental.dynamics._abm._tableau import abm
 
 from .. import common
 
@@ -145,7 +145,7 @@ def test_ode_solver(method):
     y0 = np.array([1.0])
     times = np.linspace(0, n_steps * dt, n_steps, endpoint=False)
 
-    y_ref = y0 * np.exp(-(t**2) / 2)
+    y_ref = y0 * np.exp(-(times**2) / 2)
 
     solv = solver(ode, 0.0, y0)
 

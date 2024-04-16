@@ -1,11 +1,9 @@
 from enum import IntFlag, auto
-from functools import partial, wraps
-from typing import Callable, Optional, Union
-import jax
+from typing import Optional
 
 import netket as nk
-from netket.utils.struct import dataclass, field
-from netket.utils.types import Array, PyTree
+from netket.utils.struct import dataclass
+from netket.utils.types import Array
 
 
 class SolverFlags(IntFlag):
@@ -64,14 +62,7 @@ class IntegratorState:
             last_norm = f"{self.last_norm}"
             accepted = f"{SolverFlags.INFO_STEP_ACCEPTED}"
 
-        return "IntegratorState(step_no(total)={}({}), t={}, dt={}{}{})".format(
-            self.step_no,
-            self.step_no_total,
-            self.t.value,
-            dt,
-            last_norm,
-            accepted,
-        )
+        return f"IntegratorState(step_no(total)={self.step_no}({self.step_no_total}), t={self.t.value}, dt={dt}{last_norm}{accepted})"
 
     @property
     def accepted(self):
