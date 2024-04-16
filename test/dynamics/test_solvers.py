@@ -113,7 +113,6 @@ def test_tableau_rk(tableau: str):
 
 @pytest.mark.parametrize("tableau", tableaus_abm)
 def test_tableau_abm(tableau: str):
-
     for x in tableau.alphas, tableau.betas:
         assert np.all(np.isfinite(x))
 
@@ -175,7 +174,6 @@ def test_ode_repr():
         return -t * x
 
     for solver in [RK23(dt, adaptive=True), adaptiveABM(dt, order=4, adaptive=True)]:
-
         y0 = np.array([1.0])
         solv = solver(ode, 0.0, y0)
 
