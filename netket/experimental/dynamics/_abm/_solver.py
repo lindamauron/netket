@@ -10,7 +10,6 @@ from .._structures import (
 
 class ABMConfig(IntegratorConfig):
     def __init__(self, dt, tableau, *, adaptive=False, **kwargs):
-
         self.dt = dt
         self.adaptive = adaptive
         self.kwargs = kwargs

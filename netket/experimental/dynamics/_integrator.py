@@ -163,7 +163,6 @@ class Integrator:
     dt_limits: Optional[LimitsType] = None
 
     def __post_init__(self):
-
         if self.use_adaptive:
             # raise NotImplementedError("Adaptive time steps are not implemented yet.")
             self._do_step = self._do_step_adaptive
@@ -257,7 +256,6 @@ class Integrator:
 
 class IntegratorConfig:
     def __init__(self, dt, tableau, *, adaptive=False, **kwargs):
-
         self.dt = dt
         self.adaptive = adaptive
         self.kwargs = kwargs

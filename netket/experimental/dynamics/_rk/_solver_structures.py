@@ -10,7 +10,6 @@ from .._integrator import (
 
 @dataclass(_frozen=False)
 class RKIntegrator(Integrator):
-
     def _do_step_fixed(self, rk_state, max_dt=None):
         return general_time_step_fixed(
             self.tableau.data,
@@ -33,7 +32,6 @@ class RKIntegrator(Integrator):
 
 
 class RKIntegratorConfig(IntegratorConfig):
-
     def __call__(self, f, t0, y0, *, norm=None):
         return RKIntegrator(
             self.tableau,
