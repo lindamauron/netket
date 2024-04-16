@@ -183,6 +183,10 @@ class TableauABM(Tableau):
         else:
             return f"ABM{self.order}"
 
+    @property
+    def name(self):
+        return self.__repr__()
+
     def step(self, f: Callable, t: float, dt: float, y_t: Array, state: ABMState):
         """Perform one fixed-size ABM step from `t` to `t + dt`."""
         # we use RK4 for intialization since we need a history of states for the abm method

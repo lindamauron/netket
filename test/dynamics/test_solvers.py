@@ -64,7 +64,7 @@ fixed_step_solvers = {
     "Heun": Heun,
     "Midpoint": Midpoint,
     "RK4": RK4,
-    "ABM": partial(ABM, order=4),
+    "ABM": partial(ABM, order=4, adaptive=False),
 }
 
 adaptive_solvers = {
@@ -160,7 +160,7 @@ def test_ode_solver(method):
 
     # somewhat arbitrary tolerances, that may still help spot
     # errors introduced later
-    rtol = {"Euler": 1e-2, "RK4": 5e-4, "ABM": 1e-4}.get(solver.tableau.name, 1e-3)
+    rtol = {"Euler": 1e-2, "RK4": 5e-4, "ABM4": 1e-3}.get(solver.tableau.name, 1e-3)
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=rtol)
 
 
