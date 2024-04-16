@@ -46,7 +46,7 @@ def AB(dt, order):
 
 
 @append_docstring(args_adaptive_docstring)
-def adaptiveABM(dt, order, **kwargs):
+def adaptiveABM(dt, order, adaptive=True, **kwargs):
     r"""
     The adaptive Adams-Bashforth-Moulton method of order s.
     """

@@ -41,12 +41,14 @@ from netket.experimental.dynamics._rk._tableau import (
     bt_rk4_fehlberg,
 )
 
+from netket.experimental.dynamics._abm._tableau import abm, ab
+
 from .. import common
 
 pytestmark = common.skipif_mpi
 
 
-tableaus = {
+tableaus_rk = {
     "bt_feuler": bt_feuler,
     "bt_heun": bt_heun,
     "bt_midpoint": bt_midpoint,
@@ -57,8 +59,9 @@ tableaus = {
     "bt_rk4_fehlberg": bt_rk4_fehlberg,
 }
 
+tableaus_abm = [abm(order=k) for k in range(1, 10)]
 
-explicit_fixed_step_solvers = {
+fixed_step_solvers = {
     "Euler": Euler,
     "Heun": Heun,
     "Midpoint": Midpoint,
@@ -67,24 +70,24 @@ explicit_fixed_step_solvers = {
     "ABM": partial(ABM, order=4),
 }
 
-explicit_adaptive_solvers = {
+adaptive_solvers = {
     "RK12": RK12,
     "RK23": RK23,
     "RK45": RK45,
     "ABM": partial(adaptiveABM, order=4),
 }
 
-tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus.items()]
-explicit_fixed_step_solvers_params = [
-    pytest.param(obj, id=name) for name, obj in explicit_fixed_step_solvers.items()
+rk_tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus_rk.items()]
+fixed_step_solvers_params = [
+    pytest.param(obj, id=name) for name, obj in fixed_step_solvers.items()
 ]
-explicit_adaptive_solvers_params = [
-    pytest.param(obj, id=name) for name, obj in explicit_adaptive_solvers.items()
+adaptive_solvers_params = [
+    pytest.param(obj, id=name) for name, obj in adaptive_solvers.items()
 ]
 
 
-@pytest.mark.parametrize("tableau", tableaus_params)
-def test_tableau(tableau: str):
+@pytest.mark.parametrize("tableau", rk_tableaus_params)
+def test_tableau_rk(tableau: str):
     assert tableau.name != ""
     td = tableau.data
 
@@ -108,13 +111,29 @@ def test_tableau(tableau: str):
         assert td.b.shape[0] == 2
 
 
-@pytest.mark.parametrize("method", explicit_fixed_step_solvers_params)
+@pytest.mark.parametrize("tableau", tableaus_abm)
+def test_tableau_abm(tableau: str):
+
+    for x in tableau.alphas, tableau.betas:
+        assert np.all(np.isfinite(x))
+
+    assert tableau.alphas.shape == tableau.betas.shape
+    assert tableau.order == tableau.alpha.shape[0]
+
+    assert tableau.alphas.ndim == 1
+    assert tableau.betas.ndim == 1
+    # the sum of alphas and betas should be 1
+    assert np.isclose(tableau.alphas.sum(), 1)
+    assert np.isclose(tableau.betas.sum(), 1)
+
+
+@pytest.mark.parametrize("method", fixed_step_solvers_params)
 def test_fixed_adaptive_error(method):
     with pytest.raises(TypeError):
         method(dt=0.01, adaptive=True)
 
 
-@pytest.mark.parametrize("method", explicit_fixed_step_solvers_params)
+@pytest.mark.parametrize("method", fixed_step_solvers_params)
 def test_ode_solver(method):
     def ode(t, x, **_):
         return -t * x
@@ -155,21 +174,21 @@ def test_ode_repr():
     def ode(t, x, **_):
         return -t * x
 
-    solver = RK23(dt=dt, adaptive=True)
+    for solver in [RK23(dt, adaptive=True), adaptiveABM(dt, order=4, adaptive=True)]:
 
-    y0 = np.array([1.0])
-    solv = solver(ode, 0.0, y0)
+        y0 = np.array([1.0])
+        solv = solver(ode, 0.0, y0)
 
-    assert isinstance(repr(solv), str)
-    assert isinstance(repr(solv._state), str)
+        assert isinstance(repr(solv), str)
+        assert isinstance(repr(solv._state), str)
 
-    @jax.jit
-    def _test_jit_repr(x):
-        assert isinstance(repr(x), str)
-        return 1
+        @jax.jit
+        def _test_jit_repr(x):
+            assert isinstance(repr(x), str)
+            return 1
 
-    _test_jit_repr(solv._state)
-    _test_jit_repr(solv)  # this is broken. should be fixed in the zukumft
+        _test_jit_repr(solv._state)
+        _test_jit_repr(solv)  # this is broken. should be fixed in the zukumft
 
 
 def test_solver_t0_is_integer():
@@ -179,19 +198,20 @@ def test_solver_t0_is_integer():
     def df(t, y, stage=None):
         return np.sin(t) ** 2 * y
 
-    int_config = RK23(
-        dt=0.04, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]
-    )
-    integrator = int_config(
-        df, 0, np.array([1.0])
-    )  # <-- the second argument has to be a float
+    for solver in [RK23, partial(adaptiveABM, order=4)]:
+        int_config = solver(
+            dt=0.04, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]
+        )
+        integrator = int_config(
+            df, 0, np.array([1.0])
+        )  # <-- the second argument has to be a float
 
-    integrator.step()
-    assert integrator.t > 0.0
-    assert integrator.t.dtype == integrator.dt.dtype
+        integrator.step()
+        assert integrator.t > 0.0
+        assert integrator.t.dtype == integrator.dt.dtype
 
 
-@pytest.mark.parametrize("solver", explicit_adaptive_solvers_params)
+@pytest.mark.parametrize("solver", adaptive_solvers_params)
 def test_adaptive_solver(solver):
     tol = 1e-7
 
