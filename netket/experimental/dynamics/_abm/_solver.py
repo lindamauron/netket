@@ -29,11 +29,11 @@ class ABMConfig(IntegratorConfig):
 
 
 @append_docstring(args_adaptive_docstring)
-def ABM(dt, order, adaptive=False, **kwargs):
+def ABM(dt, order, **kwargs):
     r"""
     The Adams-Bashforth-Moulton method of order s.
     """
-    return ABMConfig(dt, tableau=tb.abm(order=order), adaptive=adaptive, **kwargs)
+    return ABMConfig(dt, tableau=tb.abm(order=order), **kwargs)
 
 
 @append_docstring(args_fixed_dt_docstring)
