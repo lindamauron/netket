@@ -256,6 +256,11 @@ class Integrator:
 
 class IntegratorConfig:
     def __init__(self, dt, tableau, *, adaptive=False, **kwargs):
+        if not tableau.data.is_adaptive and adaptive:
+            raise ValueError(
+                "Cannot set `adaptive=True` for a non-adaptive integrator."
+            )
+
         self.dt = dt
         self.adaptive = adaptive
         self.kwargs = kwargs
