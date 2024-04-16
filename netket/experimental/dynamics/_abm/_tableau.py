@@ -156,7 +156,7 @@ class TableauABM(Tableau):
 
     @property
     def is_adaptive(self):
-        return not self.is_explicit()
+        return not self.is_explicit
 
     @property
     def stages(self):

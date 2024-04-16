@@ -122,6 +122,7 @@ def test_tableau_abm(tableau: str):
     assert np.isclose(tableau.alphas.sum(), 1)
     assert np.isclose(tableau.betas.sum(), 1)
 
+
 # we skip the last fixed step solver since it can be used with adaptive time-stepping
 @pytest.mark.parametrize("method", fixed_step_solvers_params[:-2])
 def test_fixed_adaptive_error(method):
@@ -194,11 +195,14 @@ def test_solver_t0_is_integer():
         return np.sin(t) ** 2 * y
 
     for init_config in [
-        RK23(
-            dt=0.04, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]
-            ),
+        RK23(dt=0.04, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]),
         ABM(
-            dt=0.04, order=4, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]
+            dt=0.04,
+            order=4,
+            adaptive=True,
+            atol=1e-3,
+            rtol=1e-3,
+            dt_limits=[1e-3, 1e-1],
         )
     ]:
         integrator = init_config(
