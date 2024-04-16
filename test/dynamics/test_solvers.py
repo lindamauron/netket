@@ -27,7 +27,6 @@ from netket.experimental.dynamics import (
     RK23,
     RK45,
     ABM,
-    adaptiveABM,
 )
 from netket.experimental.dynamics._rk._tableau import (
     bt_feuler,
@@ -72,7 +71,7 @@ adaptive_solvers = {
     "RK12": RK12,
     "RK23": RK23,
     "RK45": RK45,
-    "ABM": partial(adaptiveABM, order=4),
+    "ABM": partial(ABM, order=4),
 }
 
 rk_tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus_rk.items()]
@@ -114,14 +113,14 @@ def test_tableau_abm(tableau: str):
     for x in tableau.alphas, tableau.betas:
         assert np.all(np.isfinite(x))
 
-    assert tableau.alphas.shape == tableau.betas.shape, "alphas and betas are different"
-    assert tableau.order == tableau.alpha.shape[0], "order is ill defined"
+    assert tableau.alphas.shape == tableau.betas.shape
+    assert tableau.order == tableau.alphas.shape[0]
 
-    assert tableau.alphas.ndim == 1, "coefficients should be 1-d"
-    assert tableau.betas.ndim == 1, "coefficients should be 1-d"
+    assert tableau.alphas.ndim == 1
+    assert tableau.betas.ndim == 1
     # the sum of alphas and betas should be 1
-    assert np.isclose(tableau.alphas.sum(), 1), "coefficients should sum to 1"
-    assert np.isclose(tableau.betas.sum(), 1), "coefficients should sum to 1"
+    assert np.isclose(tableau.alphas.sum(), 1)
+    assert np.isclose(tableau.betas.sum(), 1)
 
 
 @pytest.mark.parametrize("method", fixed_step_solvers_params)
@@ -171,7 +170,7 @@ def test_ode_repr():
     def ode(t, x, **_):
         return -t * x
 
-    for solver in [RK23(dt, adaptive=True), adaptiveABM(dt, order=4, adaptive=True)]:
+    for solver in [RK23(dt, adaptive=True), ABM(dt, order=4, adaptive=True)]:
         y0 = np.array([1.0])
         solv = solver(ode, 0.0, y0)
 
@@ -194,7 +193,7 @@ def test_solver_t0_is_integer():
     def df(t, y, stage=None):
         return np.sin(t) ** 2 * y
 
-    for solver in [RK23, partial(adaptiveABM, order=4)]:
+    for solver in [RK23, partial(ABM, order=4)]:
         int_config = solver(
             dt=0.04, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]
         )

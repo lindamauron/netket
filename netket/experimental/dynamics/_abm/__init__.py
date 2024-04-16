@@ -1,1 +1,1 @@
-from ._solver import ABM, AB, adaptiveABM
+from ._solver import ABM, AB

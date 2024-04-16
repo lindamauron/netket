@@ -32,7 +32,7 @@ __all__ = [
 from ._integrator import Integrator, IntegratorConfig
 from ._state import IntegratorState
 from ._rk._solver import Euler, Heun, Midpoint, RK4, RK12, RK23, RK45
-from ._abm._solver import adaptiveABM, AB, ABM
+from ._abm._solver import AB, ABM
 
 from netket.utils import _hide_submodules
 
