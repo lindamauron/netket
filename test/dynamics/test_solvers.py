@@ -124,7 +124,7 @@ def test_tableau_abm(tableau: str):
 
 
 # we skip the last fixed step solver since it can be used with adaptive time-stepping
-@pytest.mark.parametrize("method", fixed_step_solvers_params[:-2])
+@pytest.mark.parametrize("method", fixed_step_solvers_params[:-1])
 def test_fixed_adaptive_error(method):
     with pytest.raises(TypeError):
         method(dt=0.01, adaptive=True)
@@ -161,7 +161,7 @@ def test_ode_solver(method):
 
     # somewhat arbitrary tolerances, that may still help spot
     # errors introduced later
-    rtol = {"Euler": 1e-2, "RK4": 5e-4, "ABM4": 1e-3}.get(solver.tableau.name, 1e-3)
+    rtol = {"Euler": 1e-2, "RK4": 5e-4, "ABM4": 5e-5}.get(solver.tableau.name, 1e-3)
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=rtol)
 
 
@@ -203,7 +203,7 @@ def test_solver_t0_is_integer():
             atol=1e-3,
             rtol=1e-3,
             dt_limits=[1e-3, 1e-1],
-        )
+        ),
     ]:
         integrator = init_config(
             df, 0, np.array([1.0])
