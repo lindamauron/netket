@@ -9,10 +9,10 @@ from ._state import IntegratorState
 @dataclass
 class Tableau:
     r"""
-    Class representing the general tableaus for various methods for a given the ODE dy/dt = F(t, y)
+    Class representing the general tableaus for various methods for a given the ODE :math:`dy/dt = F(t, y)`
 
     If :code:`self.is_adaptive`, the tableau also contains the coefficients
-    which can be used to estimate the local truncation error.
+    which can be used to estimate the local truncation error (if necessary).
     """
 
     order: tuple[int, int]
@@ -21,11 +21,13 @@ class Tableau:
     @property
     @abstractmethod
     def is_explicit(self):
+        """Boolean indication whether the integrator is explicit."""
         pass
 
     @property
     @abstractmethod
     def is_adaptive(self):
+        """Boolean indication whether the integrator can beå adaptive."""
         pass
 
     @property
@@ -52,10 +54,15 @@ class Tableau:
     def step(
         self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
+        """Perform one fixed-size step from `t` to `t + dt`."""
         pass
 
     @abstractmethod
     def step_with_error(
         self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
+        """
+        Perform one fixed-size step from `t` to `t + dt` and additionally return the
+        error vector provided by the adaptive solver.
+        """
         pass

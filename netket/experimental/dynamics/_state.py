@@ -35,6 +35,12 @@ class SolverFlags(IntFlag):
 
 @dataclass(_frozen=False)
 class IntegratorState:
+    r"""
+    Dataclass containing the state of an ODE solver.
+    In particular, it stores the current state of the system, former usefull values
+    and information about integration (number of step, errors, etc)
+    """
+
     step_no: int
     """Number of successful steps since the start of the iteration."""
     step_no_total: int
@@ -66,4 +72,5 @@ class IntegratorState:
 
     @property
     def accepted(self):
+        """Boolean indicating whether the last step was accepted."""
         return SolverFlags.INFO_STEP_ACCEPTED & self.flags != 0

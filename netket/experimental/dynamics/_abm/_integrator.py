@@ -30,6 +30,26 @@ def general_abm_adaptive(
     max_dt: Optional[float],
     dt_limits: LimitsType,  ### change to limtsDType
 ):
+    r"""
+    Performs one adaptive ABM step from current time.
+    Args:
+        tableau: Integration tableau containing the coefficeints for integration.
+            The tableau should contain method step_with_error(f, t, dt, y_t, state).
+        f: A callable ODE function.
+            Given a time `t` and a state `y_t`, it should return the partial
+            derivatives in the same format as `y_t`. The dunction should also accept
+            supplementary arguments, such as code:`stage`.
+        state: Intagrator state containing the current state (t,y) and stablity information.
+        atol: The tolerance for the absolute error on the state.
+        rtol: The tolerance for the realtive error on the state.
+        norm_fn: The function used for the norm of the error.
+            By default, we use euclidean_norm.
+        max_dt: The maximal value for the time step `dt`.
+        dt_limits: The extremal accepted values for the time-step `dt`.
+
+    Returns:
+        Updated state of the integrator.
+    """
     state, flag = general_time_step_adaptive(
         tableau, f, state, atol, rtol, norm_fn, max_dt, dt_limits
     )
@@ -56,6 +76,21 @@ def general_abm_fixed(
     state: ABMState,
     max_dt: Optional[float],
 ):
+    r"""
+    Performs one fixed ABM step from current time.
+    Args:
+        tableau: Integration tableau containing the coefficeints for integration.
+            The tableau should contain method step_with_error(f, t, dt, y_t, state).
+        f: A callable ODE function.
+            Given a time `t` and a state `y_t`, it should return the partial
+            derivatives in the same format as `y_t`. The dunction should also accept
+            supplementary arguments, such as code:`stage`.
+        state: Intagrator state containing the current state (t,y) and stablity information.
+        max_dt: The maximal value for the time step `dt`.
+
+    Returns:
+        Updated state of the integrator.
+    """
     state = general_time_step_fixed(tableau, f, state, max_dt)
 
     last_f = f(state.t.value, state.y, stage=tableau.order + 2)
@@ -70,11 +105,17 @@ def general_abm_fixed(
 
 @dataclass(_frozen=False)
 class ABMIntegrator(Integrator):
-    tableau: TableauABM
+    r"""
+    Ordinary-Differential-Equation Adams-Bashforth-Moulton integrator.
+    Given an ODE-function f, it integrates the derivatives to obtain the solution
+    at the next time step using Adams-Bashforth-Moulton methods.
+    """
 
     def __post_init__(self):
         super().__post_init__()
 
+        # generate the history of derivatives needed
+        # there, F_history[0] contains the last derivatives
         history = expand_dim(self.y0, self.tableau.order)
         history = jax.tree_map(
             lambda H, x: H.at[0].set(x), history, self.f(self.t0, self.y0, stage=0)
@@ -93,6 +134,9 @@ class ABMIntegrator(Integrator):
         )
 
     def _do_step_fixed(self, state, max_dt=None):
+        r"""
+        Performs one full ABM step with a fixed time-step value code:`dt`
+        """
         return general_abm_fixed(
             tableau=self.tableau,
             f=self.f,
@@ -101,6 +145,9 @@ class ABMIntegrator(Integrator):
         )
 
     def _do_step_adaptive(self, state, max_dt=None):
+        r"""
+        Performs one full ABM step with an adaptive time-step value code:`dt`
+        """
         return general_abm_adaptive(
             tableau=self.tableau,
             f=self.f,

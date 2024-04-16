@@ -33,6 +33,26 @@ def general_time_step_adaptive(
     max_dt: Optional[float],
     dt_limits: LimitsType,  ### change to limtsDType
 ):
+    r"""
+    Performs one adaptive step from current time.
+    Args:
+        tableau: Integration tableau containing the coefficeints for integration.
+            The tableau should contain method step_with_error(f, t, dt, y_t, state).
+        f: A callable ODE function.
+            Given a time `t` and a state `y_t`, it should return the partial
+            derivatives in the same format as `y_t`. The dunction should also accept
+            supplementary arguments, such as code:`stage`.
+        state: Intagrator state containing the current state (t,y) and stablity information.
+        atol: The tolerance for the absolute error on the state.
+        rtol: The tolerance for the realtive error on the state.
+        norm_fn: The function used for the norm of the error.
+            By default, we use euclidean_norm.
+        max_dt: The maximal value for the time step `dt`.
+        dt_limits: The extremal accepted values for the time-step `dt`.
+
+    Returns:
+        Updated state of the integrator.
+    """
     # return 0
     flags = SolverFlags(0)
 
@@ -129,6 +149,21 @@ def general_time_step_fixed(
     state: IntegratorState,
     max_dt: Optional[float],
 ):
+    r"""
+    Performs one fixed step from current time.
+    Args:
+        tableau: Integration tableau containing the coefficeints for integration.
+            The tableau should contain method step_with_error(f, t, dt, y_t, state).
+        f: A callable ODE function.
+            Given a time `t` and a state `y_t`, it should return the partial
+            derivatives in the same format as `y_t`. The dunction should also accept
+            supplementary arguments, such as code:`stage`.
+        state: Intagrator state containing the current state (t,y) and stablity information.
+        max_dt: The maximal value for the time step `dt`.
+
+    Returns:
+        Updated state of the integrator.
+    """
     if max_dt is None:
         actual_dt = state.dt
     else:
@@ -147,24 +182,38 @@ def general_time_step_fixed(
 
 @dataclass(_frozen=False)
 class Integrator:
+    r"""
+    Ordinary-Differential-Equation integrator.
+    Given an ODE-function f, it integrates the derivatives to obtain the solution
+    at the next time step.
+    """
     tableau: Tableau
+    """The tableau containing the integration coefficients."""
 
     f: Callable = field(repr=False)
+    """ODE function."""
     t0: float
+    """Initial time."""
     y0: Array = field(repr=False)
+    """Initial state."""
 
     initial_dt: float
+    """Initial time-step."""
 
     use_adaptive: bool
+    """Boolean indicating whether to use an adaptative scheme."""
     norm: Callable
+    """The norm used to estimate the error."""
 
     atol: float = 0.0
+    """Absolute tolerance on the error of the state."""
     rtol: float = 1e-7
+    """Relative tolerance on the error of the state."""
     dt_limits: Optional[LimitsType] = None
+    """Limits of the time-step size."""
 
     def __post_init__(self):
         if self.use_adaptive:
-            # raise NotImplementedError("Adaptive time steps are not implemented yet.")
             self._do_step = self._do_step_adaptive
         else:
             self._do_step = self._do_step_fixed
@@ -192,7 +241,7 @@ class Integrator:
 
     def step(self, max_dt=None):
         """
-        Perform one full Adams-Bashforht-Moulton step by min(self.dt, max_dt).
+        Performs one full step by min(self.dt, max_dt).
 
         Returns:
             A boolean indicating whether the step was successful or
@@ -206,6 +255,9 @@ class Integrator:
         return self._state.accepted
 
     def _do_step_fixed(self, state, max_dt=None):
+        r"""
+        Performs one full step with a fixed time-step value code:`dt`
+        """
         return general_time_step_fixed(
             tableau=self.tableau,
             f=self.f,
@@ -214,6 +266,9 @@ class Integrator:
         )
 
     def _do_step_adaptive(self, state, max_dt=None):
+        r"""
+        Performs one full step with an adaptive time-step value code:`dt`
+        """
         return general_time_step_adaptive(
             tableau=self.tableau,
             f=self.f,
@@ -227,14 +282,17 @@ class Integrator:
 
     @property
     def t(self):
+        """The actual time."""
         return self._state.t.value
 
     @property
     def y(self):
+        """The actual state."""
         return self._state.y
 
     @property
     def dt(self):
+        """The actual time-step."""
         return self._state.dt
 
     def _get_solver_flags(self, intersect=SolverFlags.NONE) -> SolverFlags:
@@ -255,7 +313,19 @@ class Integrator:
 
 
 class IntegratorConfig:
+    r"""
+    A configurator for instantiation of the integrator.
+    This allows to define the integrator (actually the IntegratorConfig) in a
+    first time, pass it as an argument to a driver which will set it by calling it.
+    """
+
     def __init__(self, dt, tableau, *, adaptive=False, **kwargs):
+        r"""
+        Args:
+            dt: The initial time-step of the integrator.
+            tableau: The tableau of coefficients for the integration.
+            adaptive: A boolean indicator whether to use an daaptive scheme.
+        """
         if not tableau.data.is_adaptive and adaptive:
             raise ValueError(
                 "Cannot set `adaptive=True` for a non-adaptive integrator."
@@ -267,6 +337,18 @@ class IntegratorConfig:
         self.tableau = tableau
 
     def __call__(self, f, t0, y0, *, norm=None):
+        r"""
+        Instantiates an integrator given the parameters given in
+        the first instance and passed as arguments.
+        Args:
+            f: The ODE function.
+            t0: The initial time.
+            y0: The initial state.
+            norm: The error norm.
+
+        Returns:
+            An Integrator with according parameters.
+        """
         return Integrator(
             self.tableau,
             f,

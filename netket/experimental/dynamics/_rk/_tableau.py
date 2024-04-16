@@ -16,7 +16,7 @@ default_dtype = jnp.float64
 class TableauRKExplicit(Tableau):
     r"""
     Class representing the Butcher tableau of an explicit Runge-Kutta method [1,2],
-    which, given the ODE dy/dt = F(t, y), updates the solution as
+    which, given the ODE :math:`dy/dt = F(t, y)`, updates the solution as
 
     .. math::
         y_{t+dt} = y_t + \sum_l b_l k_l
@@ -46,10 +46,12 @@ class TableauRKExplicit(Tableau):
 
     @property
     def is_explicit(self):
+        """Boolean indication whether the integrator is explicit."""
         jnp.allclose(self.a, jnp.tril(self.a))  # check if lower triangular
 
     @property
     def is_adaptive(self):
+        """Boolean indication whether the integrator can beå adaptive."""
         return self.b.ndim == 2
 
     @property
@@ -155,8 +157,14 @@ class TableauRKExplicit(Tableau):
 
 @dataclass
 class NamedTableau:
+    """
+    Structure holding the name and the coefficients for the RK-Tableau.
+    """
+
     name: str
+    """The name of the Tableau."""
     data: TableauRKExplicit
+    """The tableau containing the coefficients."""
 
     def __repr__(self) -> str:
         return self.name
