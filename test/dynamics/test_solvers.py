@@ -18,8 +18,19 @@ import numpy as np
 import jax
 from functools import partial
 
-from netket.experimental.dynamics import Euler, Heun, Midpoint, RK4, RK12, RK23, RK45, ABM, AB, adaptiveABM
-from netket.experimental.dynamics._rk_tableau import (
+from netket.experimental.dynamics import (
+    Euler,
+    Heun,
+    Midpoint,
+    RK4,
+    RK12,
+    RK23,
+    RK45,
+    ABM,
+    AB,
+    adaptiveABM,
+)
+from netket.experimental.dynamics._rk._tableau import (
     bt_feuler,
     bt_heun,
     bt_midpoint,
@@ -52,15 +63,15 @@ explicit_fixed_step_solvers = {
     "Heun": Heun,
     "Midpoint": Midpoint,
     "RK4": RK4,
-    "AB": partial(AB,order=4),
-    "ABM": partial(ABM,order=4)
+    "AB": partial(AB, order=4),
+    "ABM": partial(ABM, order=4),
 }
 
 explicit_adaptive_solvers = {
     "RK12": RK12,
     "RK23": RK23,
     "RK45": RK45,
-    "ABM":partial(adaptiveABM,order=4)
+    "ABM": partial(adaptiveABM, order=4),
 }
 
 tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus.items()]
@@ -115,7 +126,7 @@ def test_ode_solver(method):
     y0 = np.array([1.0])
     times = np.linspace(0, n_steps * dt, n_steps, endpoint=False)
 
-    y_ref = y0*np.exp(-t**2/2)
+    y_ref = y0 * np.exp(-(t**2) / 2)
 
     solv = solver(ode, 0.0, y0)
 
@@ -134,11 +145,7 @@ def test_ode_solver(method):
 
     # somewhat arbitrary tolerances, that may still help spot
     # errors introduced later
-    rtol = {
-        "Euler": 1e-2,
-        "RK4": 5e-4,
-        "ABM": 1e-5
-    }.get(solver.tableau.name, 1e-3)
+    rtol = {"Euler": 1e-2, "RK4": 5e-4, "ABM": 1e-5}.get(solver.tableau.name, 1e-3)
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=rtol)
 
 
@@ -154,15 +161,15 @@ def test_ode_repr():
     solv = solver(ode, 0.0, y0)
 
     assert isinstance(repr(solv), str)
-    assert isinstance(repr(solv._rkstate), str)
+    assert isinstance(repr(solv._state), str)
 
     @jax.jit
     def _test_jit_repr(x):
         assert isinstance(repr(x), str)
         return 1
 
-    _test_jit_repr(solv._rkstate)
-    _test_jit_repr(solv) # this is broken. should be fixed in the zukumft
+    _test_jit_repr(solv._state)
+    _test_jit_repr(solv)  # this is broken. should be fixed in the zukumft
 
 
 def test_solver_t0_is_integer():
@@ -198,9 +205,9 @@ def test_adaptive_solver(solver):
     y_t = []
     last_step = -1
     while solv.t <= 2.0:
-        # print(solv._rkstate)
-        if solv._rkstate.step_no != last_step:
-            last_step = solv._rkstate.step_no
+        # print(solv._state)
+        if solv.state.step_no != last_step:
+            last_step = solv._state.step_no
             t.append(solv.t)
             y_t.append(solv.y)
         solv.step()
@@ -208,6 +215,6 @@ def test_adaptive_solver(solver):
     t = np.asarray(t)
 
     # print(t)
-    y_ref = y0*np.exp(-t**2/2)
+    y_ref = y0 * np.exp(-(t**2) / 2)
 
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=1e-5)
