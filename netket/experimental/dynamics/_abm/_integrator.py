@@ -80,15 +80,12 @@ class ABMIntegrator(Integrator):
             lambda H, x: H.at[0].set(x), history, self.f(self.t0, self.y0, stage=0)
         )
 
-        times = jnp.zeros(self.tableau.order)
-        times = times.at[0].set(self.t0)
-
         self._state = ABMState(
             step_no=0,
             step_no_total=0,
             t=nk.utils.KahanSum(self.t0),
             y=self.y0,
-            y_history=history,
+            F_history=history,
             dt=self.initial_dt,
             last_norm=0.0 if self.use_adaptive else None,
             last_scaled_error=0.0 if self.use_adaptive else None,
