@@ -64,7 +64,7 @@ fixed_step_solvers = {
     "Heun": Heun,
     "Midpoint": Midpoint,
     "RK4": RK4,
-    "ABM": partial(ABM, order=4, adaptive=False),
+    "ABM": partial(ABM, order=4),
 }
 
 adaptive_solvers = {
@@ -122,8 +122,8 @@ def test_tableau_abm(tableau: str):
     assert np.isclose(tableau.alphas.sum(), 1)
     assert np.isclose(tableau.betas.sum(), 1)
 
-
-@pytest.mark.parametrize("method", fixed_step_solvers_params)
+# we skip the last fixed step solver since it can be used with adaptive time-stepping
+@pytest.mark.parametrize("method", fixed_step_solvers_params[:-2])
 def test_fixed_adaptive_error(method):
     with pytest.raises(TypeError):
         method(dt=0.01, adaptive=True)
@@ -193,11 +193,15 @@ def test_solver_t0_is_integer():
     def df(t, y, stage=None):
         return np.sin(t) ** 2 * y
 
-    for solver in [RK23, partial(ABM, order=4)]:
-        int_config = solver(
+    for init_config in [
+        RK23(
             dt=0.04, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]
+            ),
+        ABM(
+            dt=0.04, order=4, adaptive=True, atol=1e-3, rtol=1e-3, dt_limits=[1e-3, 1e-1]
         )
-        integrator = int_config(
+    ]:
+        integrator = init_config(
             df, 0, np.array([1.0])
         )  # <-- the second argument has to be a float
 
