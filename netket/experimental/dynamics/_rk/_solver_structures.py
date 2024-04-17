@@ -61,8 +61,10 @@ class RKIntegratorConfig(IntegratorConfig):
             raise ValueError(
                 "Cannot set `adaptive=True` for a non-adaptive integrator."
             )
-
-        super().__init__(dt=dt, tableau=tableau, adaptive=adaptive, **kwargs)
+        self.dt = dt
+        self.adaptive = adaptive
+        self.kwargs = kwargs
+        self.tableau = tableau
 
     def __call__(self, f, t0, y0, *, norm=None):
         r"""
