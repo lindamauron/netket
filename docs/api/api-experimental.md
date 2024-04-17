@@ -180,6 +180,7 @@ This is a collection of ODE integrators that can be used with the TDVP driver ab
    dynamics.RK23
    dynamics.RK4
    dynamics.RK45
+   dynamics.ABM
 ```
 
 ## Fermions

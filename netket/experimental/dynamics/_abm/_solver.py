@@ -80,7 +80,7 @@ def ABM(dt, order, **kwargs):
 )
 def AB(dt, order):
     r"""
-    The Adams-Bashforth-Moulton method of order :math:`s`.
+    The Adams-Bashforth method of order :math:`s`.
 
     """
     return ABMConfig(dt, tableau=tb.ab(order=order))
