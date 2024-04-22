@@ -41,8 +41,6 @@ class TableauABM(Tableau):
     [3] https://en.wikipedia.org/wiki/Linear_multistep_method
     """
 
-    order: int
-    """The order of the tableau"""
     betas: jax.numpy.ndarray
     """Coefficients for the predictor step."""
     alphas: jax.numpy.ndarray

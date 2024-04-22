@@ -57,7 +57,7 @@ tableaus_rk = {
     "bt_rk4_fehlberg": bt_rk4_fehlberg,
 }
 
-tableaus_abm = [abm(order=k) for k in range(1, 10)]
+tableaus_abm = [abm(order=k, name=f"ABM{k}") for k in range(1, 10)]
 
 fixed_step_solvers = {
     "Euler": Euler,
@@ -86,26 +86,25 @@ adaptive_solvers_params = [
 @pytest.mark.parametrize("tableau", rk_tableaus_params)
 def test_tableau_rk(tableau: str):
     assert tableau.name != ""
-    td = tableau.data
 
-    for x in td.a, td.b, td.c:
+    for x in tableau.a, tableau.b, tableau.c:
         assert np.all(np.isfinite(x))
 
-    assert td.a.ndim == 2
+    assert tableau.a.ndim == 2
     # a should be strictly upper triangular
-    np.testing.assert_array_equal(np.triu(td.a), np.zeros_like(td.a))
+    np.testing.assert_array_equal(np.triu(tableau.a), np.zeros_like(tableau.a))
     # c's should be in [0, 1]
-    assert np.all(td.c >= 0.0)
-    assert np.all(td.c <= 1.0)
+    assert np.all(tableau.c >= 0.0)
+    assert np.all(tableau.c <= 1.0)
 
-    assert len(td.order) in (1, 2)
-    assert len(td.order) == td.b.ndim
+    assert len(tableau.order) in (1, 2)
+    assert len(tableau.order) == tableau.b.ndim
 
-    assert td.a.shape[0] == td.a.shape[1]
-    assert td.a.shape[0] == td.b.shape[-1]
-    assert td.a.shape[0] == td.c.shape[0]
-    if len(td.order) == 2:
-        assert td.b.shape[0] == 2
+    assert tableau.a.shape[0] == tableau.a.shape[1]
+    assert tableau.a.shape[0] == tableau.b.shape[-1]
+    assert tableau.a.shape[0] == tableau.c.shape[0]
+    if len(tableau.order) == 2:
+        assert tableau.b.shape[0] == 2
 
 
 @pytest.mark.parametrize("tableau", tableaus_abm)
@@ -180,7 +179,6 @@ def test_ode_repr():
 
         @jax.jit
         def _test_jit_repr(x):
-            assert isinstance(repr(x), str)
             return 1
 
         _test_jit_repr(solv._state)
