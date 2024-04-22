@@ -17,6 +17,11 @@ class Tableau:
 
     order: tuple[int, int]
     """The order of the tableau"""
+    name: str = "IntegratorTableau"
+    """The name of the tableau."""
+
+    def __repr__(self) -> str:
+        return self.name
 
     @property
     @abstractmethod

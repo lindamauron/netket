@@ -326,7 +326,7 @@ class IntegratorConfig:
             tableau: The tableau of coefficients for the integration.
             adaptive: A boolean indicator whether to use an daaptive scheme.
         """
-        if not tableau.data.is_adaptive and adaptive:
+        if not tableau.is_adaptive and adaptive:
             raise ValueError(
                 "Cannot set `adaptive=True` for a non-adaptive integrator."
             )

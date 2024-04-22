@@ -155,21 +155,6 @@ class TableauRKExplicit(Tableau):
         return y_tp1, y_err
 
 
-@dataclass
-class NamedTableau:
-    """
-    Structure holding the name and the coefficients for the RK-Tableau.
-    """
-
-    name: str
-    """The name of the Tableau."""
-    data: TableauRKExplicit
-    """The tableau containing the coefficients."""
-
-    def __repr__(self) -> str:
-        return self.name
-
-
 # fmt: off
 # flake8: noqa: E123, E126, E201, E202, E221, E226, E231, E241, E251
 
@@ -180,9 +165,8 @@ bt_feuler = TableauRKExplicit(
                 b = jnp.ones((1,), dtype=default_dtype),
                 c = jnp.zeros((1), dtype=default_dtype),
                 c_error = None,
+                name="Euler"
                 )
-bt_feuler = NamedTableau("Euler", bt_feuler)
-
 
 bt_midpoint = TableauRKExplicit(
                 order = (2,),
@@ -191,8 +175,8 @@ bt_midpoint = TableauRKExplicit(
                 b = jnp.array( [0,   1], dtype=default_dtype),
                 c = jnp.array( [0, 1/2], dtype=default_dtype),
                 c_error = None,
+                name="Midpoint"
                 )
-bt_midpoint = NamedTableau("Midpoint", bt_midpoint)
 
 
 bt_heun = TableauRKExplicit(
@@ -202,8 +186,8 @@ bt_heun = TableauRKExplicit(
                 b = jnp.array( [1/2, 1/2], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
                 c_error = None,
+                name="Heun"
                 )
-bt_heun = NamedTableau("Heun", bt_heun)
 
 
 bt_rk4  = TableauRKExplicit(
@@ -215,8 +199,8 @@ bt_rk4  = TableauRKExplicit(
                 b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype),
                 c_error = None,
+                name="RK4"
                 )
-bt_rk4 = NamedTableau("RK4", bt_rk4)
 
 
 # Adaptive step:
@@ -229,8 +213,8 @@ bt_rk12  = TableauRKExplicit(
                                [1,   0]], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
                 c_error = None,
+                name="RK12"
                 )
-bt_rk12 = NamedTableau("RK12", bt_rk12)
 
 
 # Bogacki–Shampine coefficients
@@ -244,8 +228,8 @@ bt_rk23  = TableauRKExplicit(
                                [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
                 c_error = None,
+                name = "RK23"
                 )
-bt_rk23 = NamedTableau("RK23", bt_rk23)
 
 
 bt_rk4_fehlberg = TableauRKExplicit(
@@ -260,8 +244,8 @@ bt_rk4_fehlberg = TableauRKExplicit(
                                [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
                 c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
                 c_error = None,
+                name="RK45Fehlberg"
                 )
-bt_rk4_fehlberg = NamedTableau("RK45Fehlberg", bt_rk4_fehlberg)
 
 
 bt_rk4_dopri  = TableauRKExplicit(
@@ -277,5 +261,5 @@ bt_rk4_dopri  = TableauRKExplicit(
                                [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
                 c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype),
                 c_error = None,
+                name="RK45"
                 )
-bt_rk4_dopri = NamedTableau("RK45", bt_rk4_dopri)

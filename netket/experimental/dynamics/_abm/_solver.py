@@ -15,22 +15,6 @@ class ABMConfig(IntegratorConfig):
     first time, pass it as an argument to a driver which will set it by calling it.
     """
 
-    def __init__(self, dt, tableau, *, adaptive=False, **kwargs):
-        r"""
-        Args:
-            dt: The initial time-step of the integrator.
-            tableau: The tableau of coefficients for the integration.
-            adaptive: A boolean indicator whether to use an daaptive scheme.
-        """
-        if not tableau.is_adaptive and adaptive:
-            raise ValueError(
-                "Cannot set `adaptive=True` for a non-adaptive integrator."
-            )
-        self.dt = dt
-        self.adaptive = adaptive
-        self.kwargs = kwargs
-        self.tableau = tableau
-
     def __call__(self, f, t0, y0, *, norm=None):
         r"""
         Instantiates an ABM integrator given the parameters given in

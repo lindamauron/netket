@@ -78,15 +78,7 @@ class TableauABM(Tableau):
             return self.order + 1
 
     def __repr__(self):
-        if self.is_explicit:
-            return f"AB{self.order}"
-        else:
-            return f"ABM{self.order}"
-
-    @property
-    def name(self):
-        """THe name of the tableau."""
-        return self.__repr__()
+        return self.name + f"(alphas={self.alphas}, betas={self.betas})"
 
     def step(self, f: Callable, t: float, dt: float, y_t: Array, state: ABMState):
         """Perform one fixed-size ABM step from `t` to `t + dt`."""
@@ -324,7 +316,9 @@ def abm(order):
     ABM tableau for a given order.
     """
     if order in list(alphas.keys()):
-        return TableauABM(order=order, alphas=alphas[order], betas=betas[order])
+        return TableauABM(
+            order=order, alphas=alphas[order], betas=betas[order], name=f"ABM{order}"
+        )
     else:
         raise NotImplementedError(
             f"The coefficients for a Adams-Bashforth-Moulton of order {order} have not been implemented yet, you need to compute them yourself"
@@ -337,7 +331,10 @@ def ab(order):
     """
     if order in list(betas.keys()):
         return TableauABM(
-            order=order, betas=betas[order], alphas=jnp.zeros(order, default_dtype)
+            order=order,
+            betas=betas[order],
+            alphas=jnp.zeros(order, default_dtype),
+            name=f"AB{order}",
         )
     else:
         raise NotImplementedError(
