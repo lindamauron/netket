@@ -43,6 +43,8 @@ class TableauRKExplicit(Tableau):
     c: jax.numpy.ndarray
     c_error: Optional[jax.numpy.ndarray]
     """Coefficients for error estimation."""
+    name: str = "RK"
+    """The name of the tableau."""
 
     @property
     def is_explicit(self):
