@@ -36,15 +36,11 @@ class TableauRKExplicit(Tableau):
     [2] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002).
     """
 
-    order: tuple[int, int]
-    """The order of the tableau"""
     a: jax.numpy.ndarray
     b: jax.numpy.ndarray
     c: jax.numpy.ndarray
     c_error: Optional[jax.numpy.ndarray]
     """Coefficients for error estimation."""
-    name: str = "RK"
-    """The name of the tableau."""
 
     @property
     def is_explicit(self):
