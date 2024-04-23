@@ -116,7 +116,7 @@ class ABMIntegrator(Integrator):
 
         # generate the history of derivatives needed
         # there, F_history[0] contains the last derivatives
-        history = expand_dim(self.y0, self.tableau.order)
+        history = expand_dim(self.y0, self.tableau.data.order)
         history = jax.tree_map(
             lambda H, x: H.at[0].set(x), history, self.f(self.t0, self.y0, stage=0)
         )

@@ -98,7 +98,7 @@ def test_tableau_rk(tableau: str):
     for x in td.a, td.b, td.c:
         assert np.all(np.isfinite(x))
 
-    assert tableau.a.ndim == 2
+    assert td.a.ndim == 2
     # a should be strictly upper triangular
     np.testing.assert_array_equal(np.triu(td.a), np.zeros_like(td.a))
     # c's should be in [0, 1]
