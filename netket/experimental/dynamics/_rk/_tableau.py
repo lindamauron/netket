@@ -166,7 +166,7 @@ class TableauRKExplicit(Tableau):
 # Fixed Step methods
 class FEuler(TableauRKExplicit):
     def __init__(self):
-        super.__init__(
+        super().__init__(
             order = (1,),
             a = jnp.zeros((1,1), dtype=default_dtype),
             b = jnp.ones((1,), dtype=default_dtype),
