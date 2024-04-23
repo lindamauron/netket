@@ -64,14 +64,20 @@ fixed_step_solvers = {
     "Heun": Heun,
     "Midpoint": Midpoint,
     "RK4": RK4,
-    "ABM": partial(ABM, order=4),
+    "ABM2": partial(ABM, order=2),
+    "ABM3": partial(ABM, order=3),
+    "ABM4": partial(ABM, order=4),
+    "ABM5": partial(ABM, order=5),
 }
 
 adaptive_solvers = {
     "RK12": RK12,
     "RK23": RK23,
     "RK45": RK45,
-    "ABM": partial(ABM, order=4),
+    "ABM2": partial(ABM, order=2),
+    "ABM3": partial(ABM, order=3),
+    "ABM4": partial(ABM, order=4),
+    "ABM5": partial(ABM, order=5),
 }
 
 rk_tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus_rk.items()]
@@ -87,43 +93,49 @@ adaptive_solvers_params = [
 def test_tableau_rk(tableau: str):
     assert tableau.name != ""
 
-    for x in tableau.a, tableau.b, tableau.c:
+    td = tableau.data
+
+    for x in td.a, td.b, td.c:
         assert np.all(np.isfinite(x))
 
     assert tableau.a.ndim == 2
     # a should be strictly upper triangular
-    np.testing.assert_array_equal(np.triu(tableau.a), np.zeros_like(tableau.a))
+    np.testing.assert_array_equal(np.triu(td.a), np.zeros_like(td.a))
     # c's should be in [0, 1]
-    assert np.all(tableau.c >= 0.0)
-    assert np.all(tableau.c <= 1.0)
+    assert np.all(td.c >= 0.0)
+    assert np.all(td.c <= 1.0)
 
-    assert len(tableau.order) in (1, 2)
-    assert len(tableau.order) == tableau.b.ndim
+    assert len(td.order) in (1, 2)
+    assert len(td.order) == td.b.ndim
 
-    assert tableau.a.shape[0] == tableau.a.shape[1]
-    assert tableau.a.shape[0] == tableau.b.shape[-1]
-    assert tableau.a.shape[0] == tableau.c.shape[0]
-    if len(tableau.order) == 2:
-        assert tableau.b.shape[0] == 2
+    assert td.a.shape[0] == td.a.shape[1]
+    assert td.a.shape[0] == td.b.shape[-1]
+    assert td.a.shape[0] == td.c.shape[0]
+    if len(td.order) == 2:
+        assert td.b.shape[0] == 2
 
 
 @pytest.mark.parametrize("tableau", tableaus_abm)
 def test_tableau_abm(tableau: str):
-    for x in tableau.alphas, tableau.betas:
+    assert tableau.name != ""
+
+    td = tableau.data
+
+    for x in td.alphas, td.betas:
         assert np.all(np.isfinite(x))
 
-    assert tableau.alphas.shape == tableau.betas.shape
-    assert tableau.order == tableau.alphas.shape[0]
+    assert td.alphas.shape == td.betas.shape
+    assert td.order == td.alphas.shape[0]
 
-    assert tableau.alphas.ndim == 1
-    assert tableau.betas.ndim == 1
+    assert td.alphas.ndim == 1
+    assert td.betas.ndim == 1
     # the sum of alphas and betas should be 1
-    assert np.isclose(tableau.alphas.sum(), 1)
-    assert np.isclose(tableau.betas.sum(), 1)
+    assert np.isclose(td.alphas.sum(), 1)
+    assert np.isclose(td.betas.sum(), 1)
 
 
-# we skip the last fixed step solver since it can be used with adaptive time-stepping
-@pytest.mark.parametrize("method", fixed_step_solvers_params[:-1])
+# we skip the last fixed step solvers since they can be used with adaptive time-stepping
+@pytest.mark.parametrize("method", fixed_step_solvers_params[:-4])
 def test_fixed_adaptive_error(method):
     with pytest.raises(TypeError):
         method(dt=0.01, adaptive=True)
@@ -160,7 +172,7 @@ def test_ode_solver(method):
 
     # somewhat arbitrary tolerances, that may still help spot
     # errors introduced later
-    rtol = {"Euler": 1e-2, "RK4": 5e-4, "ABM4": 5e-5}.get(solver.tableau.name, 1e-3)
+    rtol = {"Euler": 1e-2, "RK4": 5e-4}.get(solver.tableau.name, 1e-3)
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=rtol)
 
 

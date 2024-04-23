@@ -6,7 +6,7 @@ from abc import abstractmethod
 from ._state import IntegratorState
 
 
-@dataclass(_frozen=True)
+@dataclass
 class Tableau:
     r"""
     Class representing the general tableaus for various methods for a given the ODE :math:`dy/dt = F(t, y)`
@@ -16,14 +16,7 @@ class Tableau:
     """
 
     order: tuple[int, int]
-    """The order of the tableau."""
-
-    def __repr__(self) -> str:
-        return self.name
-
-    @property
-    def name(self):
-        return f"Tableau{self.order}"
+    """The order of the tableau"""
 
     @property
     @abstractmethod

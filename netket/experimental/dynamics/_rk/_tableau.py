@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
@@ -33,19 +33,14 @@ class TableauRKExplicit(Tableau):
         y_{\mathrm{err}} = \sum_l (b_l - b'_l) k_l.
 
     [1] https://en.wikipedia.org/w/index.php?title=Runge%E2%80%93Kutta_methods&oldid=1055669759
-    [2] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002).
+    [2] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002)
     """
 
     a: jax.numpy.ndarray
     b: jax.numpy.ndarray
     c: jax.numpy.ndarray
-
-    @property
-    def name(self):
-        if self.is_adaptive:
-            return f"RK{self.order[1]}{self.order[0]}"
-        else:
-            return f"RK{self.order[0]}"
+    c_error: Optional[jax.numpy.ndarray]
+    """Coefficients for error estimation."""
 
     @property
     def is_explicit(self):
@@ -162,82 +157,61 @@ class TableauRKExplicit(Tableau):
 # flake8: noqa: E123, E126, E201, E202, E221, E226, E231, E241, E251
 
 # Fixed Step methods
-@dataclass
-class FEuler(TableauRKExplicit):
-    order: tuple[int, int] = (1,)
-    """The order of the tableau."""
-    a: jax.numpy.ndarray = jnp.zeros((1,1), dtype=default_dtype)
-    b: jax.numpy.ndarray = jnp.ones((1,), dtype=default_dtype)
-    c: jax.numpy.ndarray = jnp.zeros((1), dtype=default_dtype)
+bt_feuler = TableauRKExplicit(
+                order = (1,),
+                a = jnp.zeros((1,1), dtype=default_dtype),
+                b = jnp.ones((1,), dtype=default_dtype),
+                c = jnp.zeros((1), dtype=default_dtype),
+                )
+bt_feuler = NamedTableau("Euler", bt_feuler)
 
-    @property
-    def name(self):
-        return "Euler"
-bt_feuler = FEuler()
 
-@dataclass
-class Midpoint(TableauRKExplicit):
-    order: tuple[int, int] = (2,)
-    """The order of the tableau."""
-    a: jax.numpy.ndarray = jnp.array([[0,   0],
-                                      [1/2, 0]], dtype=default_dtype)
-    b: jax.numpy.ndarray = jnp.array( [0,   1], dtype=default_dtype)
-    c: jax.numpy.ndarray = jnp.array( [0, 1/2], dtype=default_dtype)
+bt_midpoint = TableauRKExplicit(
+                order = (2,),
+                a = jnp.array([[0,   0],
+                               [1/2, 0]], dtype=default_dtype),
+                b = jnp.array( [0,   1], dtype=default_dtype),
+                c = jnp.array( [0, 1/2], dtype=default_dtype),
+                )
+bt_midpoint = NamedTableau("Midpoint", bt_midpoint)
 
-    @property
-    def name(self):
-        return "Midpoint"
-bt_midpoint = Midpoint()
 
-@dataclass
-class Heun(TableauRKExplicit):
-    order: tuple[int, int] = (2,)
-    """The order of the tableau."""
-    a: jax.numpy.ndarray = jnp.array([[0,   0],
-                                      [1,   0]], dtype=default_dtype)
-    b: jax.numpy.ndarray = jnp.array( [1/2, 1/2], dtype=default_dtype)
-    c: jax.numpy.ndarray = jnp.array( [0, 1], dtype=default_dtype)
+bt_heun = TableauRKExplicit(
+                order = (2,),
+                a = jnp.array([[0,   0],
+                               [1,   0]], dtype=default_dtype),
+                b = jnp.array( [1/2, 1/2], dtype=default_dtype),
+                c = jnp.array( [0, 1], dtype=default_dtype),
+                )
+bt_heun = NamedTableau("Heun", bt_heun)
 
-    @property
-    def name(self):
-        return "Heun"
-bt_heun = Heun()
 
 bt_rk4  = TableauRKExplicit(
-    order = (4,),
-    a = jnp.array([[0,   0,   0,   0],
-                    [1/2, 0,   0,   0],
-                    [0,   1/2, 0,   0],
-                    [0,   0,   1,   0]], dtype=default_dtype),
-    b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
-    c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype)
-)
+                order = (4,),
+                a = jnp.array([[0,   0,   0,   0],
+                               [1/2, 0,   0,   0],
+                               [0,   1/2, 0,   0],
+                               [0,   0,   1,   0]], dtype=default_dtype),
+                b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
+                c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype),
+                )
+bt_rk4 = NamedTableau("RK4", bt_rk4)
 
 
 # Adaptive step:
 # Heun Euler https://en.wikipedia.org/wiki/Runge–Kutta_methods
 bt_rk12  = TableauRKExplicit(
-    order = (2,1),
-    a = jnp.array([[0,   0],
-                    [1,   0]], dtype=default_dtype),
-    b = jnp.array([[1/2, 1/2],
-                    [1,   0]], dtype=default_dtype),
-    c = jnp.array( [0, 1], dtype=default_dtype)
-)
+                order = (2,1),
+                a = jnp.array([[0,   0],
+                               [1,   0]], dtype=default_dtype),
+                b = jnp.array([[1/2, 1/2],
+                               [1,   0]], dtype=default_dtype),
+                c = jnp.array( [0, 1], dtype=default_dtype),
+                )
+bt_rk12 = NamedTableau("RK12", bt_rk12)
+
 
 # Bogacki–Shampine coefficients
-<<<<<<< HEAD
-bt_rk23 = TableauRKExplicit(
-    order = (3,2),
-    a = jnp.array([[0,   0,   0,   0],
-                    [1/2, 0,   0,   0],
-                    [0,   3/4, 0,   0],
-                    [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
-    b = jnp.array([[7/24,1/4, 1/3, 1/8],
-                    [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
-    c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype)
-)
-=======
 bt_rk23  = TableauRKExplicit(
                 order = (3,2),
                 a = jnp.array([[0,   0,   0,   0],
@@ -247,31 +221,10 @@ bt_rk23  = TableauRKExplicit(
                 b = jnp.array([[7/24,1/4, 1/3, 1/8],
                                [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
-                c_error = None,
                 )
 bt_rk23 = NamedTableau("RK23", bt_rk23)
->>>>>>> 5a718ac1 (back to before : add namedtableau to everyone)
 
-@dataclass
-class Fehlberg(TableauRKExplicit):
-    order: tuple[int, int] = (5,4)
-    """The order of the tableau."""
-    a: jax.numpy.ndarray = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
-                                      [  1/4,        0,          0,           0,            0,      0 ],
-                                      [  3/32,       9/32,       0,           0,            0,      0 ],
-                                      [  1932/2197,  -7200/2197, 7296/2197,   0,            0,      0 ],
-                                      [  439/216,    -8,         3680/513,    -845/4104,    0,      0 ],
-                                      [  -8/27,      2,          -3544/2565,  1859/4104,    11/40,  0 ]], dtype=default_dtype)
-    b: jax.numpy.ndarray = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
-                                      [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype)
-    c: jax.numpy.ndarray = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype)
 
-<<<<<<< HEAD
-    @property
-    def name(self):
-        return "RK45Fehlberg"
-bt_rk4_fehlberg = Fehlberg()
-=======
 bt_rk4_fehlberg = TableauRKExplicit(
                 order = (5,4),
                 a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
@@ -283,22 +236,21 @@ bt_rk4_fehlberg = TableauRKExplicit(
                 b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
                                [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
                 c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
-                c_error = None,
                 )
 bt_rk4_fehlberg = NamedTableau("RK45Fehlberg", bt_rk4_fehlberg)
->>>>>>> 5a718ac1 (back to before : add namedtableau to everyone)
 
 
 bt_rk4_dopri  = TableauRKExplicit(
-    order = (5,4),
-    a = jnp.array([[ 0,           0,           0,           0,        0,             0,         0 ],
-                    [  1/5,         0,           0,           0,        0,             0,         0 ],
-                    [  3/40,        9/40,        0,           0,        0,             0,         0 ],
-                    [  44/45,       -56/15,      32/9,        0,        0,             0,         0 ],
-                    [  19372/6561,  -25360/2187, 64448/6561,  -212/729, 0,             0,         0 ],
-                    [  9017/3168,   -355/33,     46732/5247,  49/176,   -5103/18656,   0,         0 ],
-                    [  35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ]], dtype=default_dtype),
-    b = jnp.array([[ 35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ],
-                    [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
-    c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype)
-)
+                order = (5,4),
+                a = jnp.array([[ 0,           0,           0,           0,        0,             0,         0 ],
+                              [  1/5,         0,           0,           0,        0,             0,         0 ],
+                              [  3/40,        9/40,        0,           0,        0,             0,         0 ],
+                              [  44/45,       -56/15,      32/9,        0,        0,             0,         0 ],
+                              [  19372/6561,  -25360/2187, 64448/6561,  -212/729, 0,             0,         0 ],
+                              [  9017/3168,   -355/33,     46732/5247,  49/176,   -5103/18656,   0,         0 ],
+                              [  35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ]], dtype=default_dtype),
+                b = jnp.array([[ 35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ],
+                               [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
+                c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype),
+                )
+bt_rk4_dopri = NamedTableau("RK45", bt_rk4_dopri)

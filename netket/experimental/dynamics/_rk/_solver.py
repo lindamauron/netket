@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from . import _tableau as rkt
+from .._integrator import IntegratorConfig
 from .._structures import (
     append_docstring,
     args_adaptive_docstring,
     args_fixed_dt_docstring,
 )
-from .._integrator import IntegratorConfig
 
 
 @append_docstring(args_fixed_dt_docstring)
