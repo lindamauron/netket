@@ -39,9 +39,7 @@ class TableauRKExplicit(Tableau):
     a: jax.numpy.ndarray
     b: jax.numpy.ndarray
     c: jax.numpy.ndarray
-    c_error: Optional[jax.numpy.ndarray]
-    """Coefficients for error estimation."""
-
+    
     @property
     def is_explicit(self):
         """Boolean indication whether the integrator is explicit."""
