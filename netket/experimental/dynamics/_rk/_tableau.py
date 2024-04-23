@@ -167,7 +167,7 @@ class TableauRKExplicit(Tableau):
 @dataclass
 class FEuler(TableauRKExplicit):
     def __init__(self):
-        super(TableauRKExplicit, self).__init__(
+        TableauRKExplicit.__init__(
             order = (1,),
             a = jnp.zeros((1,1), dtype=default_dtype),
             b = jnp.ones((1,), dtype=default_dtype),
@@ -183,7 +183,7 @@ bt_feuler = FEuler()
 @dataclass
 class Midpoint(TableauRKExplicit):
     def __init__(self):
-        super(TableauRKExplicit, self).__init__(
+        TableauRKExplicit.__init__(
             order = (2,),
             a = jnp.array([[0,   0],
                         [1/2, 0]], dtype=default_dtype),
@@ -200,7 +200,7 @@ bt_midpoint = Midpoint()
 @dataclass
 class Heun(TableauRKExplicit):
     def __init__(self):
-        super(TableauRKExplicit, self).__init__(
+        TableauRKExplicit.__init__(
             order = (2,),
             a = jnp.array([[0,   0],
                             [1,   0]], dtype=default_dtype),
@@ -254,7 +254,7 @@ bt_rk23 = TableauRKExplicit(
 @dataclass
 class Fehlberg(TableauRKExplicit):
     def __init__(self):
-        super(TableauRKExplicit, self).__init__(
+        TableauRKExplicit.__init__(
             order = (5,4),
             a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
                             [  1/4,        0,          0,           0,            0,      0 ],
