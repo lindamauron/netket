@@ -167,12 +167,13 @@ class TableauRKExplicit(Tableau):
 @dataclass
 class FEuler(TableauRKExplicit):
     def __init__(self):
-        TableauRKExplicit.__init__(self)
-        self.order = (1,)
-        self.a = jnp.zeros((1,1), dtype=default_dtype)
-        self.b = jnp.ones((1,), dtype=default_dtype)
-        self.c = jnp.zeros((1), dtype=default_dtype)
-        self.c_error = None
+        self = TableauRKExplicit(
+            order = (1,),
+            a = jnp.zeros((1,1), dtype=default_dtype),
+            b = jnp.ones((1,), dtype=default_dtype),
+            c = jnp.zeros((1), dtype=default_dtype),
+            c_error = None
+        )
 
     @property
     def name(self):
@@ -182,14 +183,14 @@ bt_feuler = FEuler()
 @dataclass
 class Midpoint(TableauRKExplicit):
     def __init__(self):
-        self.order = (2,)
-        self.a = jnp.array([[0,   0]
-                        [1/2, 0]], dtype=default_dtype)
-        self.b = jnp.array( [0,   1], dtype=default_dtype)
-        self.c = jnp.array( [0, 1/2], dtype=default_dtype)
-        self.c_error = None
-
-        TableauRKExplicit.__init__(self)
+        TableauRKExplicit(
+            order = (2,),
+            a = jnp.array([[0,   0],
+                        [1/2, 0]], dtype=default_dtype),
+            b = jnp.array( [0,   1], dtype=default_dtype),
+            c = jnp.array( [0, 1/2], dtype=default_dtype),
+            c_error = None
+        )
 
     @property
     def name(self):
@@ -199,13 +200,14 @@ bt_midpoint = Midpoint()
 @dataclass
 class Heun(TableauRKExplicit):
     def __init__(self):
-        TableauRKExplicit.__init__(self)
-        self.order = (2,)
-        self.a = jnp.array([[0,   0],
-                            [1,   0]], dtype=default_dtype)
-        self.b = jnp.array( [1/2, 1/2], dtype=default_dtype)
-        self.c = jnp.array( [0, 1], dtype=default_dtype)
-        self.c_error = None
+        self = TableauRKExplicit(
+            order = (2,),
+            a = jnp.array([[0,   0],
+                            [1,   0]], dtype=default_dtype),
+            b = jnp.array( [1/2, 1/2], dtype=default_dtype),
+            c = jnp.array( [0, 1], dtype=default_dtype),
+            c_error = None,
+        )
 
     @property
     def name(self):
@@ -252,18 +254,19 @@ bt_rk23 = TableauRKExplicit(
 @dataclass
 class Fehlberg(TableauRKExplicit):
     def __init__(self):
-        TableauRKExplicit.__init__(self)
-        self.order = (5,4)
-        self.a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
+        self = TableauRKExplicit(
+            order = (5,4),
+            a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
                             [  1/4,        0,          0,           0,            0,      0 ],
                             [  3/32,       9/32,       0,           0,            0,      0 ],
                             [  1932/2197,  -7200/2197, 7296/2197,   0,            0,      0 ],
                             [  439/216,    -8,         3680/513,    -845/4104,    0,      0 ],
-                            [  -8/27,      2,          -3544/2565,  1859/4104,    11/40,  0 ]], dtype=default_dtype)
-        self.b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
-                            [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype)
-        self.c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype)
-        self.c_error = None
+                            [  -8/27,      2,          -3544/2565,  1859/4104,    11/40,  0 ]], dtype=default_dtype),
+            b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
+                            [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
+            c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
+            c_error = None
+            )
 
     @property
     def name(self):
