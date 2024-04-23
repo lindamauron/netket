@@ -36,8 +36,8 @@ class TableauABM(Tableau):
     ..math::
         y_{\mathrm{err}} = y_{l} - y_{l}^{(p)}
 
-    [1] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002).
-    [2] J. C. Butcher, Numerical Methods for Ordinary Differential Equations, John Wiley & Sons Ltd, 2008
+    [1] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002)
+    [2] J. C. Butcher, Numerical Methods for Ordinary Differential Equations, John Wiley & Sons Ltd (2008)
     [3] https://en.wikipedia.org/wiki/Linear_multistep_method
     """
 

@@ -164,9 +164,10 @@ class TableauRKExplicit(Tableau):
 # flake8: noqa: E123, E126, E201, E202, E221, E226, E231, E241, E251
 
 # Fixed Step methods
+@dataclass
 class FEuler(TableauRKExplicit):
     def __init__(self):
-        super().__init__(
+        super(TableauRKExplicit, self).__init__(
             order = (1,),
             a = jnp.zeros((1,1), dtype=default_dtype),
             b = jnp.ones((1,), dtype=default_dtype),
@@ -179,9 +180,10 @@ class FEuler(TableauRKExplicit):
         return "Euler"
 bt_feuler = FEuler()
 
+@dataclass
 class Midpoint(TableauRKExplicit):
     def __init__(self):
-        super().__init__(
+        super(TableauRKExplicit, self).__init__(
             order = (2,),
             a = jnp.array([[0,   0],
                         [1/2, 0]], dtype=default_dtype),
@@ -195,9 +197,10 @@ class Midpoint(TableauRKExplicit):
         return "Midpoint"
 bt_midpoint = Midpoint()
 
+@dataclass
 class Heun(TableauRKExplicit):
     def __init__(self):
-        super().__init__(
+        super(TableauRKExplicit, self).__init__(
             order = (2,),
             a = jnp.array([[0,   0],
                             [1,   0]], dtype=default_dtype),
@@ -248,9 +251,10 @@ bt_rk23 = TableauRKExplicit(
     c_error = None
 )
 
+@dataclass
 class Fehlberg(TableauRKExplicit):
     def __init__(self):
-        super().__init__(
+        super(TableauRKExplicit, self).__init__(
             order = (5,4),
             a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
                             [  1/4,        0,          0,           0,            0,      0 ],
