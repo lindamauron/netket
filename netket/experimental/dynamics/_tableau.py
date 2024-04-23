@@ -73,3 +73,18 @@ class Tableau:
         error vector provided by the adaptive solver.
         """
         pass
+
+
+@dataclass
+class NamedTableau:
+    """
+    Structure holding the name and the coefficients for the RK-Tableau.
+    """
+
+    name: str
+    """The name of the Tableau."""
+    data: Tableau
+    """The tableau containing the coefficients."""
+
+    def __repr__(self) -> str:
+        return self.name

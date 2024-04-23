@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from netket.utils.struct import dataclass
 from netket.utils.types import Array
 from .._structures import expand_dim
-from .._tableau import Tableau
+from .._tableau import Tableau, NamedTableau
 from .._state import IntegratorState
 
 default_dtype = jnp.float64
@@ -226,6 +226,7 @@ bt_rk12  = TableauRKExplicit(
 )
 
 # Bogacki–Shampine coefficients
+<<<<<<< HEAD
 bt_rk23 = TableauRKExplicit(
     order = (3,2),
     a = jnp.array([[0,   0,   0,   0],
@@ -236,6 +237,20 @@ bt_rk23 = TableauRKExplicit(
                     [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
     c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype)
 )
+=======
+bt_rk23  = TableauRKExplicit(
+                order = (3,2),
+                a = jnp.array([[0,   0,   0,   0],
+                               [1/2, 0,   0,   0],
+                               [0,   3/4, 0,   0],
+                               [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
+                b = jnp.array([[7/24,1/4, 1/3, 1/8],
+                               [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
+                c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
+                c_error = None,
+                )
+bt_rk23 = NamedTableau("RK23", bt_rk23)
+>>>>>>> 5a718ac1 (back to before : add namedtableau to everyone)
 
 @dataclass
 class Fehlberg(TableauRKExplicit):
@@ -251,10 +266,27 @@ class Fehlberg(TableauRKExplicit):
                                       [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype)
     c: jax.numpy.ndarray = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype)
 
+<<<<<<< HEAD
     @property
     def name(self):
         return "RK45Fehlberg"
 bt_rk4_fehlberg = Fehlberg()
+=======
+bt_rk4_fehlberg = TableauRKExplicit(
+                order = (5,4),
+                a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
+                              [  1/4,        0,          0,           0,            0,      0 ],
+                              [  3/32,       9/32,       0,           0,            0,      0 ],
+                              [  1932/2197,  -7200/2197, 7296/2197,   0,            0,      0 ],
+                              [  439/216,    -8,         3680/513,    -845/4104,    0,      0 ],
+                              [  -8/27,      2,          -3544/2565,  1859/4104,    11/40,  0 ]], dtype=default_dtype),
+                b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
+                               [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
+                c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
+                c_error = None,
+                )
+bt_rk4_fehlberg = NamedTableau("RK45Fehlberg", bt_rk4_fehlberg)
+>>>>>>> 5a718ac1 (back to before : add namedtableau to everyone)
 
 
 bt_rk4_dopri  = TableauRKExplicit(

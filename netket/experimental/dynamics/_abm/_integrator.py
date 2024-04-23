@@ -20,7 +20,7 @@ from ._state import ABMState
 
 
 @partial(maybe_jax_jit, static_argnames=["f", "norm_fn", "dt_limits"])
-def general_abm_adaptive(
+def abm_time_step_adaptive(
     tableau: TableauABM,
     f: Callable,
     state: ABMState,
@@ -70,7 +70,7 @@ def general_abm_adaptive(
 
 
 @partial(maybe_jax_jit, static_argnames=["f"])
-def general_abm_fixed(
+def abm_time_step_fixed(
     tableau: TableauABM,
     f: Callable,
     state: ABMState,
@@ -137,8 +137,8 @@ class ABMIntegrator(Integrator):
         r"""
         Performs one full ABM step with a fixed time-step value code:`dt`
         """
-        return general_abm_fixed(
-            tableau=self.tableau,
+        return abm_time_step_fixed(
+            tableau=self.tableau.data,
             f=self.f,
             state=state,
             max_dt=max_dt,
@@ -148,8 +148,8 @@ class ABMIntegrator(Integrator):
         r"""
         Performs one full ABM step with an adaptive time-step value code:`dt`
         """
-        return general_abm_adaptive(
-            tableau=self.tableau,
+        return abm_time_step_adaptive(
+            tableau=self.tableau.data,
             f=self.f,
             state=state,
             atol=self.atol,

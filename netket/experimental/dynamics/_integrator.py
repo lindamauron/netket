@@ -18,7 +18,7 @@ from ._structures import (
     set_flag_jax,
     euclidean_norm,
 )
-from ._tableau import Tableau
+from ._tableau import NamedTableau, Tableau
 from ._state import IntegratorState, SolverFlags
 
 
@@ -187,7 +187,7 @@ class Integrator:
     Given an ODE-function f, it integrates the derivatives to obtain the solution
     at the next time step.
     """
-    tableau: Tableau
+    tableau: NamedTableau
     """The tableau containing the integration coefficients."""
 
     f: Callable = field(repr=False)
@@ -259,7 +259,7 @@ class Integrator:
         Performs one full step with a fixed time-step value code:`dt`
         """
         return general_time_step_fixed(
-            tableau=self.tableau,
+            tableau=self.tableau.data,
             f=self.f,
             state=state,
             max_dt=max_dt,
@@ -270,7 +270,7 @@ class Integrator:
         Performs one full step with an adaptive time-step value code:`dt`
         """
         return general_time_step_adaptive(
-            tableau=self.tableau,
+            tableau=self.tableau.data,
             f=self.f,
             state=state,
             atol=self.atol,

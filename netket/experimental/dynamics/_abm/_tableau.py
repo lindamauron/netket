@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from netket.utils.struct import dataclass
 from netket.utils.types import Array
 from .._structures import expand_dim
-from .._tableau import Tableau
+from .._tableau import Tableau, NamedTableau
 from ._state import ABMState
 
 default_dtype = jnp.float64
@@ -82,9 +82,12 @@ class TableauABM(Tableau):
         else:
             return self.order + 1
 
+<<<<<<< HEAD
     def __repr__(self):
         return self.name + f"(alphas={self.alphas}, betas={self.betas})"
 
+=======
+>>>>>>> 5a718ac1 (back to before : add namedtableau to everyone)
     def step(self, f: Callable, t: float, dt: float, y_t: Array, state: ABMState):
         """Perform one fixed-size ABM step from `t` to `t + dt`."""
         # we use RK4 for intialization since we need a history of states for the abm method
@@ -321,7 +324,10 @@ def abm(order):
     ABM tableau for a given order.
     """
     if order in list(alphas.keys()):
-        return TableauABM(order=order, alphas=alphas[order], betas=betas[order])
+        return NamedTableau(
+            f"ABM{order}",
+            TableauABM(order=order, alphas=alphas[order], betas=betas[order]),
+        )
     else:
         raise NotImplementedError(
             f"The coefficients for a Adams-Bashforth-Moulton of order {order} have not been implemented yet, you need to compute them yourself"
@@ -333,8 +339,11 @@ def ab(order):
     AB tableau for a given order.
     """
     if order in list(betas.keys()):
-        return TableauABM(
-            order=order, betas=betas[order], alphas=jnp.zeros(order, default_dtype)
+        return NamedTableau(
+            f"AB{order}",
+            TableauABM(
+                order=order, betas=betas[order], alphas=jnp.zeros(order, default_dtype)
+            ),
         )
     else:
         raise NotImplementedError(

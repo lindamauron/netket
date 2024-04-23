@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from . import _tableau as rkt
-from ._solver_structures import RKIntegratorConfig
 from .._structures import (
     append_docstring,
     args_adaptive_docstring,
     args_fixed_dt_docstring,
 )
+from .._integrator import IntegratorConfig
 
 
 @append_docstring(args_fixed_dt_docstring)
@@ -27,7 +27,7 @@ def Euler(dt):
     The canonical first-order forward Euler method. Fixed timestep only.
 
     """
-    return RKIntegratorConfig(dt, tableau=rkt.bt_feuler)
+    return IntegratorConfig(dt, tableau=rkt.bt_feuler)
 
 
 @append_docstring(args_fixed_dt_docstring)
@@ -36,7 +36,7 @@ def Midpoint(dt):
     The second order midpoint method. Fixed timestep only.
 
     """
-    return RKIntegratorConfig(dt, tableau=rkt.bt_midpoint)
+    return IntegratorConfig(dt, tableau=rkt.bt_midpoint)
 
 
 @append_docstring(args_fixed_dt_docstring)
@@ -45,7 +45,7 @@ def Heun(dt):
     The second order Heun's method. Fixed timestep only.
 
     """
-    return RKIntegratorConfig(dt, tableau=rkt.bt_heun)
+    return IntegratorConfig(dt, tableau=rkt.bt_heun)
 
 
 @append_docstring(args_fixed_dt_docstring)
@@ -54,7 +54,7 @@ def RK4(dt):
     The canonical Runge-Kutta Order 4 method. Fixed timestep only.
 
     """
-    return RKIntegratorConfig(dt, tableau=rkt.bt_rk4)
+    return IntegratorConfig(dt, tableau=rkt.bt_rk4)
 
 
 @append_docstring(args_adaptive_docstring)
@@ -64,7 +64,7 @@ def RK12(dt, **kwargs):
     Also known as Heun-Euler method.
 
     """
-    return RKIntegratorConfig(dt, tableau=rkt.bt_rk12, **kwargs)
+    return IntegratorConfig(dt, tableau=rkt.bt_rk12, **kwargs)
 
 
 @append_docstring(args_adaptive_docstring)
@@ -74,7 +74,7 @@ def RK23(dt, **kwargs):
     using the Bogacki–Shampine coefficients
 
     """
-    return RKIntegratorConfig(dt, tableau=rkt.bt_rk23, **kwargs)
+    return IntegratorConfig(dt, tableau=rkt.bt_rk23, **kwargs)
 
 
 @append_docstring(args_adaptive_docstring)
@@ -83,4 +83,4 @@ def RK45(dt, **kwargs):
     Dormand-Prince's 5/4 Runge-Kutta method. (free 4th order interpolant).
 
     """
-    return RKIntegratorConfig(dt, tableau=rkt.bt_rk4_dopri, **kwargs)
+    return IntegratorConfig(dt, tableau=rkt.bt_rk4_dopri, **kwargs)
