@@ -315,7 +315,10 @@ def abm(order):
     """
     if order in list(alphas.keys()):
         return TableauABM(
-            order=order, alphas=alphas[order], betas=betas[order], name=f"ABM{order}"
+            order=order,
+            alphas=alphas[order],
+            betas=betas[order],
+            info={"name": f"ABM{order}"},
         )
     else:
         raise NotImplementedError(
@@ -332,7 +335,7 @@ def ab(order):
             order=order,
             betas=betas[order],
             alphas=jnp.zeros(order, default_dtype),
-            name=f"AB{order}",
+            info={"name": f"AB{order}"},
         )
     else:
         raise NotImplementedError(

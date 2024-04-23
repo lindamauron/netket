@@ -163,7 +163,7 @@ bt_feuler = TableauRKExplicit(
                 b = jnp.ones((1,), dtype=default_dtype),
                 c = jnp.zeros((1), dtype=default_dtype),
                 c_error = None,
-                name="Euler"
+                info = {"name":"Euler"}
                 )
 
 bt_midpoint = TableauRKExplicit(
@@ -173,7 +173,7 @@ bt_midpoint = TableauRKExplicit(
                 b = jnp.array( [0,   1], dtype=default_dtype),
                 c = jnp.array( [0, 1/2], dtype=default_dtype),
                 c_error = None,
-                name="Midpoint"
+                info = {"name":"Midpoint"}
                 )
 
 
@@ -184,7 +184,7 @@ bt_heun = TableauRKExplicit(
                 b = jnp.array( [1/2, 1/2], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
                 c_error = None,
-                name="Heun"
+                info = {"name":"Heun"}
                 )
 
 
@@ -197,7 +197,7 @@ bt_rk4  = TableauRKExplicit(
                 b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype),
                 c_error = None,
-                name="RK4"
+                info = {"name":"RK4"}
                 )
 
 
@@ -211,7 +211,7 @@ bt_rk12  = TableauRKExplicit(
                                [1,   0]], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
                 c_error = None,
-                name="RK12"
+                info = {"name":"RK12"}
                 )
 
 
@@ -226,7 +226,7 @@ bt_rk23  = TableauRKExplicit(
                                [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
                 c_error = None,
-                name = "RK23"
+                info = {"name":"RK23"}
                 )
 
 
@@ -242,7 +242,7 @@ bt_rk4_fehlberg = TableauRKExplicit(
                                [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
                 c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
                 c_error = None,
-                name="RK45Fehlberg"
+                info = {"name":"RK45Fehlberg"}
                 )
 
 
@@ -259,5 +259,5 @@ bt_rk4_dopri  = TableauRKExplicit(
                                [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
                 c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype),
                 c_error = None,
-                name="RK45"
+                info = {"name":"RK45"}
                 )
