@@ -167,7 +167,7 @@ class TableauRKExplicit(Tableau):
 @dataclass
 class FEuler(TableauRKExplicit):
     def __init__(self):
-        self = TableauRKExplicit(
+        TableauRKExplicit(
             order = (1,),
             a = jnp.zeros((1,1), dtype=default_dtype),
             b = jnp.ones((1,), dtype=default_dtype),

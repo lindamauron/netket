@@ -57,7 +57,7 @@ tableaus_rk = {
     "bt_rk4_fehlberg": bt_rk4_fehlberg,
 }
 
-tableaus_abm = [abm(order=k, name=f"ABM{k}") for k in range(1, 10)]
+tableaus_abm = [abm(order=k) for k in range(1, 10)]
 
 fixed_step_solvers = {
     "Euler": Euler,
