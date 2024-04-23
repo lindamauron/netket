@@ -16,7 +16,7 @@ class Tableau:
     """
 
     order: tuple[int, int]
-    """The order of the tableau"""
+    """The order of the tableau."""
 
     def __repr__(self) -> str:
         return self.name
