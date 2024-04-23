@@ -43,6 +43,13 @@ class TableauRKExplicit(Tableau):
     """Coefficients for error estimation."""
 
     @property
+    def name(self):
+        if self.is_adaptive:
+            return f"RK{self.order[1]}{self.order[0]}"
+        else:
+            return f"RK{self.order[0]}"
+
+    @property
     def is_explicit(self):
         """Boolean indication whether the integrator is explicit."""
         jnp.allclose(self.a, jnp.tril(self.a))  # check if lower triangular
@@ -157,107 +164,124 @@ class TableauRKExplicit(Tableau):
 # flake8: noqa: E123, E126, E201, E202, E221, E226, E231, E241, E251
 
 # Fixed Step methods
-bt_feuler = TableauRKExplicit(
-                order = (1,),
-                a = jnp.zeros((1,1), dtype=default_dtype),
-                b = jnp.ones((1,), dtype=default_dtype),
-                c = jnp.zeros((1), dtype=default_dtype),
-                c_error = None,
-                info = {"name":"Euler"}
-                )
+class FEuler(TableauRKExplicit):
+    def __init__(self):
+        super.__init__(
+            order = (1,),
+            a = jnp.zeros((1,1), dtype=default_dtype),
+            b = jnp.ones((1,), dtype=default_dtype),
+            c = jnp.zeros((1), dtype=default_dtype),
+            c_error = None
+        )
 
-bt_midpoint = TableauRKExplicit(
-                order = (2,),
-                a = jnp.array([[0,   0],
-                               [1/2, 0]], dtype=default_dtype),
-                b = jnp.array( [0,   1], dtype=default_dtype),
-                c = jnp.array( [0, 1/2], dtype=default_dtype),
-                c_error = None,
-                info = {"name":"Midpoint"}
-                )
+    @property
+    def name(self):
+        return "Euler"
+bt_feuler = FEuler()
 
+class Midpoint(TableauRKExplicit):
+    def __inti__(self):
+        super().__init__(
+            order = (2,),
+            a = jnp.array([[0,   0],
+                        [1/2, 0]], dtype=default_dtype),
+            b = jnp.array( [0,   1], dtype=default_dtype),
+            c = jnp.array( [0, 1/2], dtype=default_dtype),
+            c_error = None
+        )
 
-bt_heun = TableauRKExplicit(
-                order = (2,),
-                a = jnp.array([[0,   0],
-                               [1,   0]], dtype=default_dtype),
-                b = jnp.array( [1/2, 1/2], dtype=default_dtype),
-                c = jnp.array( [0, 1], dtype=default_dtype),
-                c_error = None,
-                info = {"name":"Heun"}
-                )
+    @property
+    def name(self):
+        return "Midpoint"
+bt_midpoint = Midpoint()
 
+class Heun(TableauRKExplicit):
+    def __init__(self):
+        super().__init__(
+            order = (2,),
+            a = jnp.array([[0,   0],
+                            [1,   0]], dtype=default_dtype),
+            b = jnp.array( [1/2, 1/2], dtype=default_dtype),
+            c = jnp.array( [0, 1], dtype=default_dtype),
+            c_error = None,
+        )
+    
+    @property
+    def name(self):
+        return "Heun"
+bt_heun = Heun()
 
 bt_rk4  = TableauRKExplicit(
-                order = (4,),
-                a = jnp.array([[0,   0,   0,   0],
-                               [1/2, 0,   0,   0],
-                               [0,   1/2, 0,   0],
-                               [0,   0,   1,   0]], dtype=default_dtype),
-                b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
-                c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype),
-                c_error = None,
-                info = {"name":"RK4"}
-                )
+    order = (4,),
+    a = jnp.array([[0,   0,   0,   0],
+                    [1/2, 0,   0,   0],
+                    [0,   1/2, 0,   0],
+                    [0,   0,   1,   0]], dtype=default_dtype),
+    b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
+    c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype),
+    c_error = None
+)
 
 
 # Adaptive step:
 # Heun Euler https://en.wikipedia.org/wiki/Runge–Kutta_methods
 bt_rk12  = TableauRKExplicit(
-                order = (2,1),
-                a = jnp.array([[0,   0],
-                               [1,   0]], dtype=default_dtype),
-                b = jnp.array([[1/2, 1/2],
-                               [1,   0]], dtype=default_dtype),
-                c = jnp.array( [0, 1], dtype=default_dtype),
-                c_error = None,
-                info = {"name":"RK12"}
-                )
-
+    order = (2,1),
+    a = jnp.array([[0,   0],
+                    [1,   0]], dtype=default_dtype),
+    b = jnp.array([[1/2, 1/2],
+                    [1,   0]], dtype=default_dtype),
+    c = jnp.array( [0, 1], dtype=default_dtype),
+    c_error = None
+)
 
 # Bogacki–Shampine coefficients
-bt_rk23  = TableauRKExplicit(
-                order = (2,3),
-                a = jnp.array([[0,   0,   0,   0],
-                               [1/2, 0,   0,   0],
-                               [0,   3/4, 0,   0],
-                               [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
-                b = jnp.array([[7/24,1/4, 1/3, 1/8],
-                               [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
-                c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
-                c_error = None,
-                info = {"name":"RK23"}
-                )
+bt_rk23 = TableauRKExplicit(
+    order = (3,2),
+    a = jnp.array([[0,   0,   0,   0],
+                    [1/2, 0,   0,   0],
+                    [0,   3/4, 0,   0],
+                    [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
+    b = jnp.array([[7/24,1/4, 1/3, 1/8],
+                    [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
+    c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
+    c_error = None
+)
 
 
-bt_rk4_fehlberg = TableauRKExplicit(
-                order = (4,5),
-                a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
-                              [  1/4,        0,          0,           0,            0,      0 ],
-                              [  3/32,       9/32,       0,           0,            0,      0 ],
-                              [  1932/2197,  -7200/2197, 7296/2197,   0,            0,      0 ],
-                              [  439/216,    -8,         3680/513,    -845/4104,    0,      0 ],
-                              [  -8/27,      2,          -3544/2565,  1859/4104,    11/40,  0 ]], dtype=default_dtype),
-                b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
-                               [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
-                c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
-                c_error = None,
-                info = {"name":"RK45Fehlberg"}
-                )
+class Fehlberg(TableauRKExplicit):
+    def __init__(self):
+        super().__init__(
+            order = (5,4),
+            a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
+                            [  1/4,        0,          0,           0,            0,      0 ],
+                            [  3/32,       9/32,       0,           0,            0,      0 ],
+                            [  1932/2197,  -7200/2197, 7296/2197,   0,            0,      0 ],
+                            [  439/216,    -8,         3680/513,    -845/4104,    0,      0 ],
+                            [  -8/27,      2,          -3544/2565,  1859/4104,    11/40,  0 ]], dtype=default_dtype),
+            b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
+                            [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
+            c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
+            c_error = None
+            )
+        
+    @property
+    def name(self):
+        return "RK45Fehlberg"
+bt_rk4_fehlberg = Fehlberg()
 
 
 bt_rk4_dopri  = TableauRKExplicit(
-                order = (5,4),
-                a = jnp.array([[ 0,           0,           0,           0,        0,             0,         0 ],
-                              [  1/5,         0,           0,           0,        0,             0,         0 ],
-                              [  3/40,        9/40,        0,           0,        0,             0,         0 ],
-                              [  44/45,       -56/15,      32/9,        0,        0,             0,         0 ],
-                              [  19372/6561,  -25360/2187, 64448/6561,  -212/729, 0,             0,         0 ],
-                              [  9017/3168,   -355/33,     46732/5247,  49/176,   -5103/18656,   0,         0 ],
-                              [  35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ]], dtype=default_dtype),
-                b = jnp.array([[ 35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ],
-                               [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
-                c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype),
-                c_error = None,
-                info = {"name":"RK45"}
-                )
+    order = (5,4),
+    a = jnp.array([[ 0,           0,           0,           0,        0,             0,         0 ],
+                    [  1/5,         0,           0,           0,        0,             0,         0 ],
+                    [  3/40,        9/40,        0,           0,        0,             0,         0 ],
+                    [  44/45,       -56/15,      32/9,        0,        0,             0,         0 ],
+                    [  19372/6561,  -25360/2187, 64448/6561,  -212/729, 0,             0,         0 ],
+                    [  9017/3168,   -355/33,     46732/5247,  49/176,   -5103/18656,   0,         0 ],
+                    [  35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ]], dtype=default_dtype),
+    b = jnp.array([[ 35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ],
+                    [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
+    c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype),
+    c_error = None
+)
