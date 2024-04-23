@@ -325,7 +325,7 @@ def abm(order):
     """
     if order in list(alphas.keys()):
         tab = TableauABM(order=order, alphas=alphas[order], betas=betas[order])
-        return NamedTableau(tab, f"ABM{order}")
+        return NamedTableau(f"ABM{order}", tab)
     else:
         raise NotImplementedError(
             f"The coefficients for a Adams-Bashforth-Moulton of order {order} have not been implemented yet, you need to compute them yourself"
@@ -340,7 +340,7 @@ def ab(order):
         tab = TableauABM(
             order=order, betas=betas[order], alphas=jnp.zeros(order, default_dtype)
         )
-        return NamedTableau(tab, f"AB{order}")
+        return NamedTableau(f"AB{order}", tab)
     else:
         raise NotImplementedError(
             f"The coefficients for a Adams-Bashforth of order {order} have not been implemented yet, you need to compute them yourself"

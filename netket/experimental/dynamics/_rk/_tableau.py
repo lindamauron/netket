@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -39,7 +39,7 @@ class TableauRKExplicit(Tableau):
     a: jax.numpy.ndarray
     b: jax.numpy.ndarray
     c: jax.numpy.ndarray
-    
+
     @property
     def is_explicit(self):
         """Boolean indication whether the integrator is explicit."""
