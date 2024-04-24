@@ -20,7 +20,7 @@ from ._state import ABMState
 
 
 @partial(maybe_jax_jit, static_argnames=["f", "norm_fn", "dt_limits"])
-def abm_time_step_fixed(
+def abm_time_step_adaptive(
     tableau: TableauABM,
     f: Callable,
     state: ABMState,
@@ -70,7 +70,7 @@ def abm_time_step_fixed(
 
 
 @partial(maybe_jax_jit, static_argnames=["f"])
-def abm_time_step_adaptive(
+def abm_time_step_fixed(
     tableau: TableauABM,
     f: Callable,
     state: ABMState,

@@ -59,7 +59,7 @@ def _stop_after_one_step(step, *_):
 fixed_step_integrators = [
     pytest.param(nkx.dynamics.Euler(dt=0.01), id="Euler(dt=0.01)"),
     pytest.param(nkx.dynamics.Heun(dt=0.01), id="Heun(dt=0.01)"),
-    pytest.param(nkx.dynamics.ABM(dt=0.01, order=2), id="ABM2(dt=0.01)"),
+    pytest.param(nkx.dynamics.ABM(dt=0.01, order=4), id="ABM4(dt=0.01)"),
 ]
 adaptive_step_integrators = [
     pytest.param(
