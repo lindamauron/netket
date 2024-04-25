@@ -20,6 +20,46 @@ from ._tableau import Tableau, NamedTableau
 from ._state import IntegratorState, SolverFlags
 
 
+# Since we don't know if the Tableau.step() is jitt-able, we don't jit the general_...
+# but the functions inside the tableau are jitted where it can be
+# ALso, we define a separate function to adapt the time step, so that one can be jitted
+def general_time_step_fixed(
+    tableau: Tableau,
+    f: Callable,
+    state: IntegratorState,
+    max_dt: Optional[float],
+):
+    r"""
+    Performs one fixed step from current time.
+    Args:
+        tableau: Integration tableau containing the coefficeints for integration.
+            The tableau should contain method step_with_error(f, t, dt, y_t, state).
+        f: A callable ODE function.
+            Given a time `t` and a state `y_t`, it should return the partial
+            derivatives in the same format as `y_t`. The dunction should also accept
+            supplementary arguments, such as code:`stage`.
+        state: Intagrator state containing the current state (t,y) and stablity information.
+        max_dt: The maximal value for the time step `dt`.
+
+    Returns:
+        Updated state of the integrator.
+    """
+    if max_dt is None:
+        actual_dt = state.dt
+    else:
+        actual_dt = jnp.minimum(state.dt, max_dt)
+
+    y_tp1 = tableau.step(f, state.t.value, actual_dt, state.y, state)
+
+    return state.replace(
+        step_no=state.step_no + 1,
+        step_no_total=state.step_no_total + 1,
+        t=state.t + actual_dt,
+        y=y_tp1,
+        flags=SolverFlags.INFO_STEP_ACCEPTED,
+    )
+
+
 # @partial(maybe_jax_jit, static_argnames=["f", "norm_fn", "dt_limits"])
 def general_time_step_adaptive(
     tableau: Tableau,
@@ -61,6 +101,24 @@ def general_time_step_adaptive(
 
     y_tp1, y_err = tableau.step_with_error(f, state.t.value, actual_dt, state.y, state)
 
+    return adapt_time_step(
+        y_tp1,
+        y_err,
+        atol,
+        rtol,
+        state,
+        norm_fn,
+        actual_dt,
+        dt_limits,
+        tableau.error_order,
+        flags,
+    )
+
+
+# @partial(maybe_jax_jit, static_argnames=["norm_fn", "dt_limits", "error_order"])
+def adapt_time_step(
+    y_tp1, y_err, atol, rtol, state, norm_fn, actual_dt, dt_limits, error_order, flags
+):
     scaled_err, norm_y = scaled_error(
         y_tp1,
         y_err,
@@ -76,7 +134,7 @@ def general_time_step_adaptive(
     next_dt = propose_time_step(
         actual_dt,
         scaled_err,
-        tableau.error_order,
+        error_order,
         limits=(
             (
                 jnp.maximum(0.1 * state.dt, dt_limits[0])
@@ -137,44 +195,6 @@ def general_time_step_adaptive(
             None,
         ),
         accept_step,
-    )
-
-
-# @partial(maybe_jax_jit, static_argnames=["f"])
-def general_time_step_fixed(
-    tableau: Tableau,
-    f: Callable,
-    state: IntegratorState,
-    max_dt: Optional[float],
-):
-    r"""
-    Performs one fixed step from current time.
-    Args:
-        tableau: Integration tableau containing the coefficeints for integration.
-            The tableau should contain method step_with_error(f, t, dt, y_t, state).
-        f: A callable ODE function.
-            Given a time `t` and a state `y_t`, it should return the partial
-            derivatives in the same format as `y_t`. The dunction should also accept
-            supplementary arguments, such as code:`stage`.
-        state: Intagrator state containing the current state (t,y) and stablity information.
-        max_dt: The maximal value for the time step `dt`.
-
-    Returns:
-        Updated state of the integrator.
-    """
-    if max_dt is None:
-        actual_dt = state.dt
-    else:
-        actual_dt = jnp.minimum(state.dt, max_dt)
-
-    y_tp1 = tableau.step(f, state.t.value, actual_dt, state.y, state)
-
-    return state.replace(
-        step_no=state.step_no + 1,
-        step_no_total=state.step_no_total + 1,
-        t=state.t + actual_dt,
-        y=y_tp1,
-        flags=SolverFlags.INFO_STEP_ACCEPTED,
     )
 
 
