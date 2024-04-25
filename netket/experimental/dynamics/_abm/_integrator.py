@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Callable, Optional
 
 import jax
@@ -7,7 +6,7 @@ import jax.numpy as jnp
 import netket as nk
 from netket.utils.struct import dataclass
 
-from .._structures import maybe_jax_jit, LimitsType
+from .._structures import LimitsType
 from .._integrator import (
     Integrator,
     general_time_step_adaptive,
@@ -19,7 +18,7 @@ from ._tableau import TableauABM, expand_dim
 from ._state import ABMState
 
 
-@partial(maybe_jax_jit, static_argnames=["f", "norm_fn", "dt_limits"])
+# @partial(maybe_jax_jit, static_argnames=["f", "norm_fn", "dt_limits"])
 def abm_time_step_adaptive(
     tableau: TableauABM,
     f: Callable,
@@ -50,26 +49,29 @@ def abm_time_step_adaptive(
     Returns:
         Updated state of the integrator.
     """
-    state, flag = general_time_step_adaptive(
+    state, accept_step = general_time_step_adaptive(
         tableau, f, state, atol, rtol, norm_fn, max_dt, dt_limits
     )
 
     last_f = f(state.t.value, state.y, stage=tableau.order + 2)
-    return jax.lax.cond(
-        flag,
-        lambda _: state.replace(
-            F_history=jax.tree_map(
-                lambda H, x: jnp.roll(H, 1, axis=0).at[0].set(x),
-                state.F_history,
-                last_f,
+    return (
+        jax.lax.cond(
+            accept_step,
+            lambda _: state.replace(
+                F_history=jax.tree_map(
+                    lambda H, x: jnp.roll(H, 1, axis=0).at[0].set(x),
+                    state.F_history,
+                    last_f,
+                ),
             ),
+            lambda _: state,
+            None,
         ),
-        lambda _: state,
-        None,
+        accept_step,
     )
 
 
-@partial(maybe_jax_jit, static_argnames=["f"])
+# @partial(maybe_jax_jit, static_argnames=["f"])
 def abm_time_step_fixed(
     tableau: TableauABM,
     f: Callable,
@@ -157,4 +159,4 @@ class ABMIntegrator(Integrator):
             norm_fn=self.norm,
             max_dt=max_dt,
             dt_limits=self.dt_limits,
-        )
+        )[0]

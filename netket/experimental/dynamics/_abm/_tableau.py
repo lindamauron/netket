@@ -1,11 +1,12 @@
 from typing import Callable
+from functools import partial
 
 import jax
 import jax.numpy as jnp
 
 from netket.utils.struct import dataclass
 from netket.utils.types import Array
-from .._structures import expand_dim
+from .._structures import expand_dim, maybe_jax_jit
 from .._tableau import Tableau, NamedTableau
 from ._state import ABMState
 
@@ -41,8 +42,6 @@ class TableauABM(Tableau):
     [3] https://en.wikipedia.org/wiki/Linear_multistep_method
     """
 
-    order: int
-    """The order of the tableau"""
     betas: jax.numpy.ndarray
     """Coefficients for the predictor step."""
     alphas: jax.numpy.ndarray
@@ -64,7 +63,7 @@ class TableauABM(Tableau):
         Number of stages (equal to the number of evaluations of the ode function)
         of the scheme.
         """
-        return self.order + 1
+        return len(self.alphas) + 1
 
     @property
     def error_order(self):
@@ -78,24 +77,25 @@ class TableauABM(Tableau):
             return self.order + 1
 
     def __repr__(self):
+        return self.name
+
+    @property
+    def name(self):
+        """The name of the tableau."""
         if self.is_explicit:
             return f"AB{self.order}"
         else:
             return f"ABM{self.order}"
 
-    @property
-    def name(self):
-        """The name of the tableau."""
-        return self.__repr__()
-
     def step(self, f: Callable, t: float, dt: float, y_t: Array, state: ABMState):
         """Perform one fixed-size ABM step from `t` to `t + dt`."""
+
         # we use RK4 for intialization since we need a history of states for the abm method
-        if state.step_no_total < self.stages - 1:
-            y_tp1, _ = self._rk4(f, t, dt, y_t)
+        if state.step_no < self.stages - 1:
+            y_tp1 = self._rk4(f, t, dt, y_t, state.F_history)
 
         else:
-            y_tp1, _ = self._abm(f, t, dt, y_t, state.F_history)
+            y_tp1 = self._abm(f, t, dt, y_t, state.F_history)
 
         return y_tp1
 
@@ -107,18 +107,55 @@ class TableauABM(Tableau):
         error vector provided by the adaptive solver.
         """
         # we use RK4 for intialization since we need a history of states for the abm method
-        if state.step_no_total < self.stages - 1:
-            y_tp1, y_err = self._rk4(f, t, dt, y_t)
+        if state.step_no < self.stages - 1:
+            y_tp1, y_err = self._rk4_with_error(f, t, dt, y_t, state.F_history)
 
         else:
-            y_tp1, y_err = self._abm(f, t, dt, y_t, state.F_history)
+            y_tp1, y_err = self._abm_with_error(f, t, dt, y_t, state.F_history)
 
         return y_tp1, y_err
 
-    def _abm(self, f, t, dt, y_t, F_history):
+    @partial(maybe_jax_jit, static_argnames=["f"])
+    def _abm_with_error(self, f, t, dt, y_t, F_history):
         """
         Perform one fixed-size ABM step from `t` to `t + dt` and additionally return the
         error vector provided by the adaptive solver.
+        """
+        ## F_history[0] corresponds to F(y(t),t)=F(y_n,t_n), we are looking for y(t+dt)=y_n+1
+
+        # F[k] = f(t_{n-1+k}, y_{n-1+k}), k in [0,s-1]
+        y_tilde = jax.tree_map(
+            lambda y_t, F: y_t
+            + jnp.asarray(dt, dtype=y_t.dtype)
+            * jnp.tensordot(jnp.asarray(self.betas, dtype=y_t.dtype), F, axes=[0, 0]),
+            y_t,
+            F_history,
+        )
+
+        # now the corrector step
+        # change the forces with by adding the one extrapolated
+        F = jax.tree_map(
+            lambda H, f_l: jnp.roll(H, 1, axis=0).at[0].set(f_l),
+            F_history,
+            f(t + dt, y_tilde, stage=self.order + 1),
+        )
+
+        y_tp1 = jax.tree_map(
+            lambda y_t, F: y_t
+            + jnp.asarray(dt, dtype=y_t.dtype)
+            * jnp.tensordot(jnp.asarray(self.alphas, dtype=y_t.dtype), F, axes=[0, 0]),
+            y_t,
+            F,
+        )
+
+        y_err = jax.tree_map(lambda x, y: x - y, y_tp1, y_tilde)
+
+        return y_tp1, y_err
+
+    @partial(maybe_jax_jit, static_argnames=["f"])
+    def _abm(self, f, t, dt, y_t, F_history):
+        """
+        Perform one fixed-size ABM step from `t` to `t + dt`.
         """
         ## F_history[0] corresponds to F(y(t),t)=F(y_n,t_n), we are looking for y(t+dt)=y_n+1
 
@@ -137,7 +174,7 @@ class TableauABM(Tableau):
             F = jax.tree_map(
                 lambda H, f_l: jnp.roll(H, 1, axis=0).at[0].set(f_l),
                 F_history,
-                f(t + dt, y_tilde, stage=self.order),
+                f(t + dt, y_tilde, stage=self.order + 1),
             )
 
             y_tp1 = jax.tree_map(
@@ -163,11 +200,10 @@ class TableauABM(Tableau):
                 F,
             )
 
-        y_err = jax.tree_map(lambda x, y: x - y, y_tp1, y_tilde)
+        return y_tp1
 
-        return y_tp1, y_err
-
-    def _rk4(self, f, t, dt, y_t):
+    @partial(maybe_jax_jit, static_argnames=["f"])
+    def _rk4_with_error(self, f, t, dt, y_t, F_history):
         """
         Perform one fixed-size RK4 step from `t` to `t + dt` and additionally return the
         error vector provided by the adaptive solver.
@@ -209,6 +245,42 @@ class TableauABM(Tableau):
         )
 
         return y_tp1, y_err
+
+    @partial(maybe_jax_jit, static_argnames=["f"])
+    def _rk4(self, f, t, dt, y_t, F_history):
+        """
+        Perform one fixed-size RK4 step from `t` to `t + dt`.
+        """
+        a = jnp.array(
+            [[0, 0, 0, 0], [1 / 2, 0, 0, 0], [0, 1 / 2, 0, 0], [0, 0, 1, 0]],
+            dtype=default_dtype,
+        )
+
+        times = t + jnp.array([0, 1 / 2, 1 / 2, 1], dtype=default_dtype) * dt
+        k = expand_dim(y_t, 4)
+        for l in range(4):
+            dy_l = jax.tree_map(
+                lambda k: jnp.tensordot(jnp.asarray(a[l], dtype=k.dtype), k, axes=1),
+                k,
+            )
+            y_l = jax.tree_map(
+                lambda y_t, dy_l: jnp.asarray(y_t + dt * dy_l, dtype=dy_l.dtype),
+                y_t,
+                dy_l,
+            )
+            k_l = f(times[l], y_l, stage=l)
+            k = jax.tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
+
+        b = jnp.array([1 / 6, 1 / 3, 1 / 3, 1 / 6], dtype=default_dtype)
+        y_tp1 = jax.tree_map(
+            lambda y_t, k: y_t
+            + jnp.asarray(dt, dtype=y_t.dtype)
+            * jnp.tensordot(jnp.asarray(b, dtype=k.dtype), k, axes=1),
+            y_t,
+            k,
+        )
+
+        return y_tp1
 
 
 r"""

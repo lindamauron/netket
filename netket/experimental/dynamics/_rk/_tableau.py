@@ -1,11 +1,12 @@
 from typing import Callable
+from functools import partial
 
 import jax
 import jax.numpy as jnp
 
 from netket.utils.struct import dataclass
 from netket.utils.types import Array
-from .._structures import expand_dim
+from .._structures import expand_dim, maybe_jax_jit
 from .._tableau import Tableau, NamedTableau
 from .._state import IntegratorState
 
@@ -60,7 +61,7 @@ class TableauRKExplicit(Tableau):
     def stages(self):
         """
         Number of stages (equal to the number of evaluations of the ode function)
-        of the RK scheme.
+        of the scheme.
         """
         return len(self.c)
 
@@ -105,6 +106,7 @@ class TableauRKExplicit(Tableau):
 
         return k
 
+    @partial(maybe_jax_jit, static_argnames=("f"))
     def step(
         self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
@@ -122,6 +124,7 @@ class TableauRKExplicit(Tableau):
 
         return y_tp1
 
+    @partial(maybe_jax_jit, static_argnames=("f"))
     def step_with_error(
         self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):

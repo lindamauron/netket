@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Callable, Optional
 
 import jax
@@ -11,7 +10,6 @@ from netket.utils.types import Array
 from netket.utils.numbers import dtype as _dtype
 
 from ._structures import (
-    maybe_jax_jit,
     LimitsType,
     scaled_error,
     propose_time_step,
@@ -22,7 +20,7 @@ from ._tableau import Tableau, NamedTableau
 from ._state import IntegratorState, SolverFlags
 
 
-@partial(maybe_jax_jit, static_argnames=["f", "norm_fn", "dt_limits"])
+# @partial(maybe_jax_jit, static_argnames=["f", "norm_fn", "dt_limits"])
 def general_time_step_adaptive(
     tableau: Tableau,
     f: Callable,
@@ -142,7 +140,7 @@ def general_time_step_adaptive(
     )
 
 
-@partial(maybe_jax_jit, static_argnames=["f"])
+# @partial(maybe_jax_jit, static_argnames=["f"])
 def general_time_step_fixed(
     tableau: Tableau,
     f: Callable,

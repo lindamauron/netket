@@ -87,18 +87,20 @@ nqs_models = [
 @pytest.mark.parametrize("model", nqs_models)
 @pytest.mark.parametrize("integrator", fixed_step_integrators)
 @pytest.mark.parametrize("propagation_type", ["real", "imag"])
-def test_one_fixed_step(model, integrator, propagation_type):
-    ha, vstate, _ = _setup_system(L=2, model=model)
-    holomorphic = jnp.issubdtype(vstate.model.param_dtype, jnp.complexfloating)
-    te = nkx.TDVP(
-        ha,
-        vstate,
-        integrator,
-        qgt=nk.optimizer.qgt.QGTJacobianDense(holomorphic=holomorphic),
-        propagation_type=propagation_type,
-    )
-    te.run(T=0.01, callback=_stop_after_one_step)
-    assert te.t == 0.01
+@pytest.mark.parametrize("disable_jit", [False, True])
+def test_one_fixed_step(model, integrator, propagation_type, disable_jit):
+    with common.set_config("NETKET_EXPERIMENTAL_DISABLE_ODE_JIT", disable_jit):
+        ha, vstate, _ = _setup_system(L=2, model=model)
+        holomorphic = jnp.issubdtype(vstate.model.param_dtype, jnp.complexfloating)
+        te = nkx.TDVP(
+            ha,
+            vstate,
+            integrator,
+            qgt=nk.optimizer.qgt.QGTJacobianDense(holomorphic=holomorphic),
+            propagation_type=propagation_type,
+        )
+        te.run(T=0.01, callback=_stop_after_one_step)
+        assert te.t == 0.01
 
 
 def l4_norm(x):
