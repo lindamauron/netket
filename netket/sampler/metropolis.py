@@ -28,7 +28,7 @@ from netket.hilbert import AbstractHilbert, ContinuousHilbert
 from netket.utils import mpi, wrap_afun
 from netket.utils.types import PyTree, DType
 
-from netket.utils.deprecation import deprecated, warn_deprecation
+from netket.utils.deprecation import warn_deprecation
 from netket.utils import struct
 
 from netket.utils.config_flags import config
@@ -101,9 +101,7 @@ class MetropolisSamplerState(SamplerState):
 
     def __repr__(self):
         if self.n_steps > 0:
-            acc_string = "# accepted = {}/{} ({}%), ".format(
-                self.n_accepted, self.n_steps, self.acceptance * 100
-            )
+            acc_string = f"# accepted = {self.n_accepted}/{self.n_steps} ({self.acceptance * 100}%), "
         else:
             acc_string = ""
 
@@ -530,32 +528,6 @@ class MetropolisSampler(Sampler):
         )
 
 
-@deprecated(
-    "The module function `sample_next` is deprecated in favor of the class method `sample_next`."
-)
-def sample_next(
-    sampler: MetropolisSampler,
-    machine: Union[Callable, nn.Module],
-    parameters: PyTree,
-    state: Optional[SamplerState] = None,
-) -> tuple[SamplerState, jnp.ndarray]:
-    """
-    Samples the next state in the Markov chain.
-
-    Args:
-        sampler: The Metropolis sampler.
-        machine: A Flax module or callable with the forward pass of the log-pdf.
-            If it is a callable, it should have the signature :code:`f(parameters, σ) -> jnp.ndarray`.
-        parameters: The PyTree of parameters of the model.
-        state: The current state of the sampler. If not specified, then initialize and reset it.
-
-    Returns:
-        state: The new state of the sampler.
-        σ: The next batch of samples.
-    """
-    return sampler.sample_next(machine, parameters, state)
-
-
 def MetropolisLocal(hilbert, **kwargs) -> MetropolisSampler:
     r"""
     Sampler acting on one local degree of freedom.
@@ -697,7 +669,7 @@ def MetropolisHamiltonian(hilbert, hamiltonian, **kwargs) -> MetropolisSampler:
        >>> # Construct a MetropolisHamiltonian Sampler
        >>> sa = nk.sampler.MetropolisHamiltonian(hi, hamiltonian=ha)
        >>> print(sa)
-       MetropolisSampler(rule = HamiltonianRuleNumba(Ising(J=1.0, h=1.0; dim=100)), n_chains = 16, sweep_size = 100, reset_chains = False, machine_power = 2, dtype = <class 'float'>)
+       MetropolisSampler(rule = HamiltonianRuleNumba(operator=Ising(J=1.0, h=1.0; dim=100)), n_chains = 16, sweep_size = 100, reset_chains = False, machine_power = 2, dtype = <class 'float'>)
     """
     from .rules import HamiltonianRule
 

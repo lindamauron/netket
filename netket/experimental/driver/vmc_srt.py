@@ -50,7 +50,7 @@ def SRt(
     local_energies = local_energies.flatten()
 
     if e_mean is None:
-        e_mean = mpi.mean(local_energies)
+        e_mean = nkstats.mean(local_energies)
     de = jnp.conj(local_energies - e_mean).squeeze()
 
     # * in this case O_L should be padded with zeros
@@ -103,7 +103,7 @@ def SRt(
     # To repack the real coefficients in order to get complex updates
     if mode == "complex" and nkjax.tree_leaf_iscomplex(params_structure):
         np = updates.shape[-1] // 2
-        updates = (updates[:np] + 1j * updates[np:]) / 2
+        updates = updates[:np] + 1j * updates[np:]
 
     return -updates
 
@@ -279,6 +279,7 @@ class VMC_SRt(AbstractVariationalDriver):
             mode=self.jacobian_mode,
             dense=True,
             center=True,
+            chunk_size=self.state.chunk_size,
         )  # jacobians is centered
 
         diag_shift = self.diag_shift

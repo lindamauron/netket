@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from functools import partial
 
 import numpy as np
@@ -21,7 +21,7 @@ import jax
 from jax import numpy as jnp
 
 from netket import config
-from netket.utils.types import PyTree, PRNGKeyT
+from netket.utils.types import PyTree, PRNGKeyT, Array
 from netket.utils import struct, mpi
 from netket.jax.sharding import with_samples_sharding_constraint, sharding_decorator
 
@@ -35,7 +35,7 @@ from netket.sampler.rules import LocalRule, ExchangeRule, HamiltonianRule
 # https://github.com/netket/netket/blob/87d469aa8c23f71c4838cf09d7ed7b87ff2ea01f/netket/legacy/sampler/numpy/metropolis_hastings_pt.py
 
 
-class MetropolisPtSamplerState(MetropolisSamplerState):
+class ParallelTemperingSamplerState(MetropolisSamplerState):
     """
     State for the Metropolis Parallel Tempering sampler.
 
@@ -83,7 +83,7 @@ class MetropolisPtSamplerState(MetropolisSamplerState):
             acc_string = ""
 
         text = (
-            f"MetropolisPtSamplerState(# replicas = {self.beta.shape[-1]}, "
+            f"ParallelTemperingSamplerState(# replicas = {self.beta.shape[-1]}, "
             + acc_string
             + f"rng state={self.rng}"
         )
@@ -113,13 +113,15 @@ class MetropolisPtSamplerState(MetropolisSamplerState):
         return out
 
 
-class MetropolisPtSampler(MetropolisSampler):
+class ParallelTemperingSampler(MetropolisSampler):
     """
     Metropolis-Hastings with Parallel Tempering sampler.
 
     This sampler samples an Hilbert space, producing samples off a specific dtype.
     The samples are generated according to a transition rule that must be
     specified.
+
+    The Metropolis Hastings acceptance rule is correted with a temperature.
     """
 
     n_replicas: int = struct.field(pytree_node=False, default=32)
@@ -129,10 +131,24 @@ class MetropolisPtSampler(MetropolisSampler):
 
     The total number of chains evolved is :code:`n_chains * n_replicas`.
     """
+    _beta_sorted: jax.Array = None
+    """
+    An internal cache for the user-specified betas, sorted.
+    """
+    _beta_distribution: str = struct.field(pytree_node=False, default="linear")
+    """
+    An internal for the user-specified distribution of betas.
+    """
 
-    def __init__(self, *args, n_replicas: int = 32, **kwargs):
+    def __init__(
+        self,
+        *args,
+        n_replicas: Optional[int] = None,
+        betas: Optional[Union[str, jax.Array]] = "linear",
+        **kwargs,
+    ):
         r"""
-        ``MetropolisSampler`` is a generic Metropolis-Hastings sampler using
+        ``ParallelTemperingSampler`` is a generic Metropolis-Hastings sampler using
         a transition rule to perform moves in the Markov Chain.
         The transition kernel is used to generate
         a proposed state :math:`s^\prime`, starting from the current state :math:`s`.
@@ -151,8 +167,14 @@ class MetropolisPtSampler(MetropolisSampler):
             hilbert: The hilbert space to sample
             rule: A `MetropolisRule` to generate random transitions from a given state as
                     well as uniform random states.
-            n_replicas: The number of different temperatures β for the sampling.
-                    (default : linear distribution of 32 temperatures between 0 and 1)
+            n_replicas: The number of different temperatures β for the sampling, must be even.
+                    (default : 32).
+            betas: (Optional) Distribution or list of values of the temperatures β.
+                    For the distribution, possibility between "linear" for a linear distribution
+                    and "log" for a logarithmic one.
+                    For the explicit list of values, the length must be even and the value β=1 must
+                    obligatory be an element of betas, all other temperatures must be in (0,1].
+                    (default : "lin", i.e. linear distribution between (0,1]).
             n_chains: The number of Markov Chain to be run in parallel on a single process.
             sweep_size: The number of exchanges that compose a single sweep.
                     If None, sweep_size is equal to the number of degrees of freedom being sampled
@@ -161,15 +183,103 @@ class MetropolisPtSampler(MetropolisSampler):
             machine_pow: The power to which the machine should be exponentiated to generate the pdf (default = 2).
             dtype: The dtype of the states sampled (default = np.float32).
         """
+        if isinstance(betas, str):
+            betas = betas.lower()
+            if betas not in ["linear", "lin", "logarithmic", "log"]:
+                raise ValueError(
+                    f"""
+                    To initialize the temperatures with a string, you must choose between
+                    "lin" for a linear distribution and "log" for a logarithmic distribution.
+                    Instead got "{betas}".
+                    """
+                )
+            if n_replicas is None:
+                n_replicas = 32
+
+            # truncate to last 3
+            beta_distribution = betas[:3]
+            betas = None
+        elif isinstance(betas, Array) or isinstance(betas, list):
+            # TODO: this defaults to float32/64 depending on what is enabled.
+            # Might need to think about a better default here.
+            betas = jnp.array(betas, dtype=float)
+            if betas.ndim != 1:
+                raise ValueError("betas must have exactly 1 dimension.")
+            if n_replicas is not None:
+                raise ValueError(
+                    """
+                    Cannot specify the list of betas and n_replicas at the same time.
+                    The number of replicas will be inferred automatically from the length
+                    of the vector of inverse temperatures.
+                    """
+                )
+            # we need beta[0] = 1, so we sort and check that the temperatures are valid
+            betas = jnp.sort(betas, descending=True)
+            if not (jnp.isclose(betas[0], 1) and betas[-1] > 0):
+                raise ValueError(
+                    rf"""The values for beta should be in (0,1] and obligatory contain beta=1, instead got [{jnp.min(betas):.2f},{jnp.max(betas):.8f}]."""
+                )
+
+            beta_distribution = "custom"
+            n_replicas = betas.shape[-1]
+        else:
+            raise TypeError(
+                "`betas` must be a string or a vector of inverse temperatures."
+            )
+
+        # verify the number of replicas
         if not (
             isinstance(n_replicas, int)
             and n_replicas > 0
             and np.mod(n_replicas, 2) == 0
         ):
-            raise ValueError("n_replicas must be an even integer > 0.")
+            raise ValueError(
+                "n_replicas (or the length of `betas`) must be an even integer > 0."
+            )
+
         self.n_replicas = n_replicas
+        self._beta_sorted = betas
+        self._beta_distribution = beta_distribution
 
         super().__init__(*args, **kwargs)
+
+    @property
+    def sorted_betas(self):
+        """
+        The sorted values of the temperatures for each _physical_ markov chain.
+        The first value is β = 1 and is the _physical_ temperature.
+        """
+
+        if self._beta_sorted is not None:
+            return self._beta_sorted
+        else:
+            if self._beta_distribution == "lin":
+                return (
+                    1.0
+                    - jnp.arange(self.n_replicas, dtype=jnp.float64) / self.n_replicas
+                )
+            elif self._beta_distribution == "log":
+                return -jnp.log(
+                    jnp.arange(1, self.n_replicas + 1, dtype=jnp.float64)
+                    / (self.n_replicas + 1)
+                ) / jnp.log(self.n_replicas + 1)
+            else:
+                raise NotImplementedError(f"distribution: {self._beta_distribution}")
+
+    def __repr__(sampler):
+        return (
+            f"{type(sampler).__name__}("
+            + f"\n  hilbert = {sampler.hilbert},"
+            + f"\n  rule = {sampler.rule},"
+            + f"\n  n_chains = {sampler.n_chains},"
+            + f"\n  n_replicas = {sampler.n_replicas},"
+            + f"\n  beta_distribution = {sampler._beta_distribution},"
+            + f"\n  sweep_size = {sampler.sweep_size},"
+            + f"\n  reset_chains = {sampler.reset_chains},"
+            + f"\n  machine_power = {sampler.machine_pow},"
+            + f"\n  dtype = {sampler.dtype}"
+            + ")"
+        )
 
     @property
     def n_batches(self) -> int:
@@ -193,16 +303,17 @@ class MetropolisPtSampler(MetropolisSampler):
     @partial(jax.jit, static_argnums=1)
     def _init_state(
         sampler, machine, parameters: PyTree, key: PRNGKeyT
-    ) -> MetropolisPtSamplerState:
+    ) -> ParallelTemperingSamplerState:
         key_state, key_rule, rng = jax.random.split(key, 3)
         rule_state = sampler.rule.init_state(sampler, machine, parameters, key_rule)
         σ = sampler.rule.random_state(sampler, machine, parameters, rule_state, rng)
         σ = with_samples_sharding_constraint(σ)
 
-        beta = 1.0 - jnp.arange(sampler.n_replicas) / sampler.n_replicas
-        beta = jnp.tile(beta, (sampler.n_batches // sampler.n_replicas, 1))
+        beta = jnp.tile(
+            sampler.sorted_betas, (sampler.n_batches // sampler.n_replicas, 1)
+        )
 
-        return MetropolisPtSamplerState(
+        return ParallelTemperingSamplerState(
             σ=σ,
             rng=key_state,
             rule_state=rule_state,
@@ -210,7 +321,9 @@ class MetropolisPtSampler(MetropolisSampler):
         )
 
     @partial(jax.jit, static_argnums=1)
-    def _reset(sampler, machine, parameters: PyTree, state: MetropolisPtSamplerState):
+    def _reset(
+        sampler, machine, parameters: PyTree, state: ParallelTemperingSamplerState
+    ):
         state = super()._reset(machine, parameters, state)
         return state.replace(
             n_accepted_per_beta=jnp.zeros_like(state.n_accepted_per_beta),
@@ -222,7 +335,7 @@ class MetropolisPtSampler(MetropolisSampler):
         )
 
     def _sample_next(
-        sampler, machine, parameters: PyTree, state: MetropolisPtSamplerState
+        sampler, machine, parameters: PyTree, state: ParallelTemperingSamplerState
     ):
         def loop_body(i, s):
             # 1 to propagate for next iteration, 1 for uniform rng and n_chains for transition kernel
@@ -416,7 +529,7 @@ class MetropolisPtSampler(MetropolisSampler):
         return new_state, σ_new
 
 
-def MetropolisLocalPt(hilbert, *args, **kwargs):
+def ParallelTemperingLocal(hilbert, *args, **kwargs):
     r"""
     Sampler acting on one local degree of freedom.
 
@@ -452,10 +565,12 @@ def MetropolisLocalPt(hilbert, *args, **kwargs):
         machine_pow: The power to which the machine should be exponentiated to generate the pdf (default = 2).
         dtype: The dtype of the states sampled (default = np.float32).
     """
-    return MetropolisPtSampler(hilbert, LocalRule(), *args, **kwargs)
+    return ParallelTemperingSampler(hilbert, LocalRule(), *args, **kwargs)
 
 
-def MetropolisExchangePt(hilbert, *args, clusters=None, graph=None, d_max=1, **kwargs):
+def ParallelTemperingExchange(
+    hilbert, *args, clusters=None, graph=None, d_max=1, **kwargs
+):
     r"""
     This sampler acts locally only on two local degree of freedom :math:`s_i` and :math:`s_j`,
     and proposes a new state: :math:`s_1 \dots s^\prime_i \dots s^\prime_j \dots s_N`,
@@ -508,10 +623,10 @@ def MetropolisExchangePt(hilbert, *args, clusters=None, graph=None, d_max=1, **k
           MetropolisSampler(rule = ExchangeRule(# of clusters: 200), n_chains = 16, machine_power = 2, sweep_size = 100, dtype = <class 'numpy.float64'>)
     """
     rule = ExchangeRule(clusters=clusters, graph=graph, d_max=d_max)
-    return MetropolisPtSampler(hilbert, rule, *args, **kwargs)
+    return ParallelTemperingSampler(hilbert, rule, *args, **kwargs)
 
 
-def MetropolisHamiltonianPt(hilbert, hamiltonian, *args, **kwargs):
+def ParallelTemperingHamiltonian(hilbert, hamiltonian, *args, **kwargs):
     r"""
     Sampling based on the off-diagonal elements of a Hamiltonian (or a generic Operator).
     In this case, the transition matrix is taken to be:
@@ -557,4 +672,4 @@ def MetropolisHamiltonianPt(hilbert, hamiltonian, *args, **kwargs):
        MetropolisSampler(rule = HamiltonianRule(Ising(J=1.0, h=1.0; dim=100)), n_chains = 16, machine_power = 2, sweep_size = 100, dtype = <class 'numpy.float64'>)
     """
     rule = HamiltonianRule(hamiltonian)
-    return MetropolisPtSampler(hilbert, rule, *args, **kwargs)
+    return ParallelTemperingSampler(hilbert, rule, *args, **kwargs)

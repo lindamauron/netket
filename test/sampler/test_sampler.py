@@ -71,10 +71,10 @@ samplers["MetropolisNumpy(Local): Spin"] = nk.sampler.MetropolisLocalNumpy(hi)
 #    nk.hilbert.DoubledHilbert(nk.hilbert.Spin(s=0.5, N=2))
 # )
 
-samplers["MetropolisPT(Local): Spin"] = nkx.sampler.MetropolisLocalPt(
+samplers["MetropolisPT(Local): Spin"] = nk.sampler.ParallelTemperingLocal(
     hi, n_replicas=4, sweep_size=hi.size * 4
 )
-samplers["MetropolisPT(Local): Fock"] = nkx.sampler.MetropolisLocalPt(
+samplers["MetropolisPT(Local): Fock"] = nk.sampler.ParallelTemperingLocal(
     hib_u, n_replicas=4, sweep_size=hib_u.size * 4
 )
 
@@ -135,8 +135,6 @@ samplers[
     ),
 )
 
-
-# samplers["MetropolisPT(Custom: Sx): Spin"] = nkx.sampler.MetropolisCustomPt(hi, move_operators=move_op, n_replicas=4)
 
 samplers["Autoregressive: Spin 1/2"] = nk.sampler.ARDirectSampler(hi)
 samplers["Autoregressive: Spin 1"] = nk.sampler.ARDirectSampler(hi_spin1)
@@ -582,7 +580,7 @@ def test_fermions_spin_exchange():
 
 def test_multiplerules_pt(model_and_weights):
     hi = ha.hilbert
-    sa = nkx.sampler.MetropolisPtSampler(
+    sa = nk.sampler.ParallelTemperingSampler(
         hi,
         rule=nk.sampler.rules.MultipleRules(
             [nk.sampler.rules.LocalRule(), nk.sampler.rules.HamiltonianRule(ha)],
@@ -603,3 +601,33 @@ def test_multiplerules_pt(model_and_weights):
         chain_length=10,
     )
     assert samples.shape == (sa.n_chains, 10, hi.size)
+
+
+def test_hamiltonian_jax_sampler_isleaf():
+    g = nk.graph.Hypercube(length=4, n_dim=1, pbc=True)
+
+    hi = nk.hilbert.Spin(s=1 / 2, N=g.n_nodes)
+    rule1 = nk.sampler.rules.HamiltonianRule(
+        nk.operator.IsingJax(hilbert=hi, graph=g, h=1.0)
+    )
+    rule2 = nk.sampler.rules.HamiltonianRule(
+        nk.operator.IsingJax(hilbert=hi, graph=g, h=1.0)
+    )
+    leaf1, struct1 = jax.tree_util.tree_flatten(rule1)
+    leaf2, struct2 = jax.tree_util.tree_flatten(rule2)
+
+    # if the structures are identical, the operators must have been unpacked.
+    assert struct1 == struct2
+    assert hash(struct1) == hash(struct2)
+
+    # check contained in leafs (this only works because the arrays are identically the same, but it
+    # is enough for this check):
+    for leaf in jax.tree_util.tree_leaves(rule1.operator):
+        found = False
+        for l in leaf1:
+            if leaf is l:
+                found = True
+                break
+        # If this fails, it is either because the operator is not a leaf ot the rule, or because jax changed
+        # some internals and the flattening does not return identical arrays anymore.
+        assert found

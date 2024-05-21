@@ -18,9 +18,7 @@ import copy
 import pytest
 from pytest import approx, raises
 
-import flax.linen as nn
 import jax
-import jax.numpy as jnp
 import numpy as np
 
 import netket as nk
@@ -195,9 +193,10 @@ def test_n_samples_api(vstate, _device_count):
 def test_chunk_size_api(vstate, _mpi_size):
     assert vstate.chunk_size is None
 
-    with raises(
-        ValueError,
-    ):
+    with raises(ValueError):
+        vstate.chunk_size = 1.5
+
+    with raises(ValueError):
         vstate.chunk_size = -1
 
     vstate.n_samples = 1008
@@ -216,21 +215,15 @@ def test_chunk_size_api(vstate, _mpi_size):
     vstate.n_samples = 1008 * 2
     assert vstate.chunk_size == 126
 
-    with raises(
-        ValueError,
-    ):
+    with raises(ValueError):
         vstate.chunk_size = 500
 
     _ = vstate.sample()
     _ = vstate.sample(n_samples=vstate.n_samples)
-    with raises(
-        ValueError,
-    ):
+    with raises(ValueError):
         vstate.sample(n_samples=1008 + 16)
 
-    with raises(
-        ValueError,
-    ):
+    with raises(ValueError):
         vstate.sample(n_samples=1008, chain_length=100)
 
 
@@ -433,68 +426,10 @@ def test_forces(vstate, operator):
 
     _, f1 = vstate.expect_and_forces(operator)
     if nk.jax.tree_leaf_iscomplex(vstate.parameters):
-        g1 = f1
+        g1 = jax.tree_util.tree_map(lambda x: 2.0 * x, f1)
     else:
         g1 = jax.tree_util.tree_map(lambda x: 2.0 * np.real(x), f1)
     jax.tree_util.tree_map(np.testing.assert_array_equal, g1, O_grad1)
-
-
-def test_forces_gradient_rule():
-    class M1(nn.Module):
-        n_h: int
-
-        @nn.compact
-        def __call__(self, x):
-            n_v = x.shape[-1]
-            W = self.param(
-                "weights", nn.initializers.normal(), (self.n_h, n_v), jnp.complex128
-            )
-
-            y = jnp.einsum("ij,...j", W, x)
-            return jnp.sum(nk.nn.activation.reim_selu(y), axis=-1)
-
-    class M2(nn.Module):
-        n_h: int
-
-        @nn.compact
-        def __call__(self, x):
-            n_v = x.shape[-1]
-            Wr = self.param(
-                "weights_re", nn.initializers.normal(), (self.n_h, n_v), jnp.float64
-            )
-            Wi = self.param(
-                "weights_im", nn.initializers.normal(), (self.n_h, n_v), jnp.float64
-            )
-
-            W = Wr + 1j * Wi
-
-            y = jnp.einsum("ij,...j", W, x)
-            return jnp.sum(nk.nn.activation.reim_selu(y), axis=-1)
-
-    ma1 = M1(8)
-    ma2 = M2(8)
-    hi = nk.hilbert.Spin(1 / 2, N=4)
-    ha = nk.operator.Ising(hi, nk.graph.Chain(4), h=0.5)
-    samp = nk.sampler.ExactSampler(hi)
-    vs1 = nk.vqs.MCState(samp, model=ma1, n_samples=1024, sampler_seed=1234, seed=1234)
-    vs2 = nk.vqs.MCState(samp, model=ma2, n_samples=1024, sampler_seed=1234, seed=1234)
-    vs1.parameters = {
-        "weights": vs2.parameters["weights_re"] + 1j * vs2.parameters["weights_im"]
-    }
-
-    np.testing.assert_allclose(vs1.to_array(), vs2.to_array())
-
-    _, f1 = vs1.expect_and_forces(ha)
-    _, f2 = vs2.expect_and_forces(ha)
-    _, g1 = vs1.expect_and_grad(ha)
-    _, g2 = vs2.expect_and_grad(ha)
-
-    np.testing.assert_allclose(g1["weights"], f1["weights"])
-    np.testing.assert_allclose(g2["weights_re"], 2 * np.real(f2["weights_re"]))
-    np.testing.assert_allclose(g2["weights_im"], 2 * np.real(f2["weights_im"]))
-    np.testing.assert_allclose(
-        g1["weights"], 0.5 * (g2["weights_re"] + 1j * g2["weights_im"])
-    )
 
 
 @common.skipif_mpi

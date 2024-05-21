@@ -19,11 +19,12 @@ from pytest import raises
 
 import numpy as np
 import jax
-import jax.numpy as jnp
 import netket as nk
 from jax.nn.initializers import normal
 
 from netket.optimizer.linear_operator import LinearOperator
+
+from .finite_diff import central_diff_grad
 
 from .. import common
 
@@ -191,31 +192,6 @@ def _expval(par, vs, H):
     return np.real(expval)
 
 
-def central_diff_grad(func, x, eps, *args, dtype=None):
-    if dtype is None:
-        dtype = x.dtype
-
-    grad = np.zeros(
-        len(x), dtype=nk.jax.maybe_promote_to_complex(x.dtype, func(x, *args).dtype)
-    )
-    epsd = np.zeros(len(x), dtype=dtype)
-    epsd[0] = eps
-    for i in range(len(x)):
-        assert not np.any(np.isnan(x + epsd))
-        grad_r = 0.5 * (func(x + epsd, *args) - func(x - epsd, *args))
-        if jnp.iscomplexobj(x):
-            grad_i = 0.5 * (func(x + 1j * epsd, *args) - func(x - 1j * epsd, *args))
-            grad[i] = 0.5 * grad_r + 0.5j * grad_i
-        else:
-            # grad_i = 0.0
-            grad[i] = grad_r
-
-        assert not np.isnan(grad[i])
-        grad[i] /= eps
-        epsd = np.roll(epsd, 1)
-    return grad
-
-
 @common.skipif_mpi
 @pytest.mark.parametrize(
     "L,n_iterations,h",
@@ -277,15 +253,14 @@ def same_derivatives(der_log, num_der_log, abs_eps=1.0e-6, rel_eps=1.0e-6):
 def test_chunk_size_api(vstate, _mpi_size):
     assert vstate.chunk_size is None
 
-    with raises(
-        ValueError,
-    ):
+    with raises(ValueError):
         vstate.chunk_size = -1
 
+    with raises(ValueError):
+        vstate.chunk_size = 1.5
+
     # does not divide hi.n_states
-    with raises(
-        ValueError,
-    ):
+    with raises(ValueError):
         vstate.chunk_size = 3
 
     assert vstate.chunk_size is None
