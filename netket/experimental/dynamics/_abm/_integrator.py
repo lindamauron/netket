@@ -2,6 +2,7 @@ from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
+from jax.tree_util import tree_map
 
 import netket as nk
 from netket.utils.struct import dataclass
@@ -58,7 +59,7 @@ def abm_time_step_adaptive(
         jax.lax.cond(
             accept_step,
             lambda _: state.replace(
-                F_history=jax.tree_map(
+                F_history=tree_map(
                     lambda H, x: jnp.roll(H, 1, axis=0).at[0].set(x),
                     state.F_history,
                     last_f,
@@ -97,7 +98,7 @@ def abm_time_step_fixed(
 
     last_f = f(state.t.value, state.y, stage=tableau.order + 2)
     return state.replace(
-        F_history=jax.tree_map(
+        F_history=tree_map(
             lambda H, x: jnp.roll(H, 1, axis=0).at[0].set(x),
             state.F_history,
             last_f,
@@ -119,7 +120,7 @@ class ABMIntegrator(Integrator):
         # generate the history of derivatives needed
         # there, F_history[0] contains the last derivatives
         history = expand_dim(self.y0, self.tableau.data.order)
-        history = jax.tree_map(
+        history = tree_map(
             lambda H, x: H.at[0].set(x), history, self.f(self.t0, self.y0, stage=0)
         )
 

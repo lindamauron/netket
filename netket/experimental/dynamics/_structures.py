@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 import jax
 import jax.numpy as jnp
+from jax.tree_util import tree_map
 
 import netket as nk
 from netket import config
@@ -82,7 +83,7 @@ def euclidean_norm(x: Union[PyTree, Array]):
         return jnp.sqrt(
             jax.tree_util.tree_reduce(
                 lambda x, y: x + y,
-                jax.tree_map(lambda x: jnp.sum(jnp.abs(x) ** 2), x),
+                tree_map(lambda x: jnp.sum(jnp.abs(x) ** 2), x),
             )
         )
 
@@ -97,7 +98,7 @@ def maximum_norm(x: Union[PyTree, Array]):
         return jnp.sqrt(
             jax.tree_util.tree_reduce(
                 jnp.maximum,
-                jax.tree_map(lambda x: jnp.max(jnp.abs(x)), x),
+                tree_map(lambda x: jnp.max(jnp.abs(x)), x),
             )
         )
 
@@ -111,7 +112,7 @@ def expand_dim(tree: PyTree, sz: int):
     def _expand(x):
         return jnp.zeros((sz, *x.shape), dtype=x.dtype)
 
-    return jax.tree_map(_expand, tree)
+    return tree_map(_expand, tree)
 
 
 def append_docstring(doc):

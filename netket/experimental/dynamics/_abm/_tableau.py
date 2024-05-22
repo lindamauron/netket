@@ -3,6 +3,7 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+from jax.tree_util import tree_map
 
 from netket.utils.struct import dataclass
 from netket.utils.types import Array
@@ -124,7 +125,7 @@ class TableauABM(Tableau):
         ## F_history[0] corresponds to F(y(t),t)=F(y_n,t_n), we are looking for y(t+dt)=y_n+1
 
         # F[k] = f(t_{n-1+k}, y_{n-1+k}), k in [0,s-1]
-        y_tilde = jax.tree_map(
+        y_tilde = tree_map(
             lambda y_t, F: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(self.betas, dtype=y_t.dtype), F, axes=[0, 0]),
@@ -134,13 +135,13 @@ class TableauABM(Tableau):
 
         # now the corrector step
         # change the forces with by adding the one extrapolated
-        F = jax.tree_map(
+        F = tree_map(
             lambda H, f_l: jnp.roll(H, 1, axis=0).at[0].set(f_l),
             F_history,
             f(t + dt, y_tilde, stage=self.order + 1),
         )
 
-        y_tp1 = jax.tree_map(
+        y_tp1 = tree_map(
             lambda y_t, F: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(self.alphas, dtype=y_t.dtype), F, axes=[0, 0]),
@@ -148,7 +149,7 @@ class TableauABM(Tableau):
             F,
         )
 
-        y_err = jax.tree_map(lambda x, y: x - y, y_tp1, y_tilde)
+        y_err = tree_map(lambda x, y: x - y, y_tp1, y_tilde)
 
         return y_tp1, y_err
 
@@ -160,7 +161,7 @@ class TableauABM(Tableau):
         ## F_history[0] corresponds to F(y(t),t)=F(y_n,t_n), we are looking for y(t+dt)=y_n+1
 
         # F[k] = f(t_{n-1+k}, y_{n-1+k}), k in [0,s-1]
-        y_tilde = jax.tree_map(
+        y_tilde = tree_map(
             lambda y_t, F: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(self.betas, dtype=y_t.dtype), F, axes=[0, 0]),
@@ -171,13 +172,13 @@ class TableauABM(Tableau):
         # now the corrector step
         if not self.is_explicit:
             # change the forces with by adding the one extrapolated
-            F = jax.tree_map(
+            F = tree_map(
                 lambda H, f_l: jnp.roll(H, 1, axis=0).at[0].set(f_l),
                 F_history,
                 f(t + dt, y_tilde, stage=self.order + 1),
             )
 
-            y_tp1 = jax.tree_map(
+            y_tp1 = tree_map(
                 lambda y_t, F: y_t
                 + jnp.asarray(dt, dtype=y_t.dtype)
                 * jnp.tensordot(
@@ -190,7 +191,7 @@ class TableauABM(Tableau):
             y_tp1 = y_tilde
 
             # prediction of order from before
-            y_tilde = jax.tree_map(
+            y_tilde = tree_map(
                 lambda y_t, F: y_t
                 + jnp.asarray(dt, dtype=y_t.dtype)
                 * jnp.tensordot(
@@ -216,20 +217,20 @@ class TableauABM(Tableau):
         times = t + jnp.array([0, 1 / 2, 1 / 2, 1], dtype=default_dtype) * dt
         k = expand_dim(y_t, 4)
         for l in range(4):
-            dy_l = jax.tree_map(
+            dy_l = tree_map(
                 lambda k: jnp.tensordot(jnp.asarray(a[l], dtype=k.dtype), k, axes=1),
                 k,
             )
-            y_l = jax.tree_map(
+            y_l = tree_map(
                 lambda y_t, dy_l: jnp.asarray(y_t + dt * dy_l, dtype=dy_l.dtype),
                 y_t,
                 dy_l,
             )
             k_l = f(times[l], y_l, stage=l)
-            k = jax.tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
+            k = tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
 
         b = jnp.array([1 / 6, 1 / 3, 1 / 3, 1 / 6], dtype=default_dtype)
-        y_tp1 = jax.tree_map(
+        y_tp1 = tree_map(
             lambda y_t, k: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(b, dtype=k.dtype), k, axes=1),
@@ -238,7 +239,7 @@ class TableauABM(Tableau):
         )
 
         db = jnp.array([5 / 72, -1 / 12, -1 / 9, 1 / 8], dtype=default_dtype)
-        y_err = jax.tree_map(
+        y_err = tree_map(
             lambda k: jnp.asarray(dt, dtype=k.dtype)
             * jnp.tensordot(jnp.asarray(db, dtype=k.dtype), k, axes=1),
             k,
@@ -259,20 +260,20 @@ class TableauABM(Tableau):
         times = t + jnp.array([0, 1 / 2, 1 / 2, 1], dtype=default_dtype) * dt
         k = expand_dim(y_t, 4)
         for l in range(4):
-            dy_l = jax.tree_map(
+            dy_l = tree_map(
                 lambda k: jnp.tensordot(jnp.asarray(a[l], dtype=k.dtype), k, axes=1),
                 k,
             )
-            y_l = jax.tree_map(
+            y_l = tree_map(
                 lambda y_t, dy_l: jnp.asarray(y_t + dt * dy_l, dtype=dy_l.dtype),
                 y_t,
                 dy_l,
             )
             k_l = f(times[l], y_l, stage=l)
-            k = jax.tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
+            k = tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
 
         b = jnp.array([1 / 6, 1 / 3, 1 / 3, 1 / 6], dtype=default_dtype)
-        y_tp1 = jax.tree_map(
+        y_tp1 = tree_map(
             lambda y_t, k: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(b, dtype=k.dtype), k, axes=1),
