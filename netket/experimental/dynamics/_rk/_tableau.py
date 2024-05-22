@@ -1,45 +1,24 @@
-# Copyright 2021 The NetKet Authors - All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-from typing import Callable, Optional
+from typing import Callable
+from functools import partial
 
 import jax
 import jax.numpy as jnp
+from jax.tree_util import tree_map
 
-from netket.utils.struct import dataclass
-from netket.utils.types import Array, PyTree
+from netket.utils.struct import dataclass, field
+from netket.utils.types import Array
+from .._structures import expand_dim, maybe_jax_jit
+from .._tableau import Tableau
+from .._state import IntegratorState
 
 default_dtype = jnp.float64
 
 
-def expand_dim(tree: PyTree, sz: int):
-    """
-    creates a new pytree with same structure as input `tree`, but where very leaf
-    has an extra dimension at 0 with size `sz`.
-    """
-
-    def _expand(x):
-        return jnp.zeros((sz, *x.shape), dtype=x.dtype)
-
-    return jax.tree_util.tree_map(_expand, tree)
-
-
 @dataclass
-class TableauRKExplicit:
+class TableauRKExplicit(Tableau):
     r"""
     Class representing the Butcher tableau of an explicit Runge-Kutta method [1,2],
-    which, given the ODE dy/dt = F(t, y), updates the solution as
+    which, given the ODE :math:`dy/dt = F(t, y)`, updates the solution as
 
     .. math::
         y_{t+dt} = y_t + \sum_l b_l k_l
@@ -56,23 +35,24 @@ class TableauRKExplicit:
         y_{\mathrm{err}} = \sum_l (b_l - b'_l) k_l.
 
     [1] https://en.wikipedia.org/w/index.php?title=Runge%E2%80%93Kutta_methods&oldid=1055669759
-    [2] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002).
+    [2] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002)
     """
 
-    order: tuple[int, int]
-    """The order of the tableau"""
-    a: jax.numpy.ndarray
-    b: jax.numpy.ndarray
-    c: jax.numpy.ndarray
-    c_error: Optional[jax.numpy.ndarray]
-    """Coefficients for error estimation."""
+    a: jax.numpy.ndarray = field(repr=False)
+    """Coefficients of th intermediate states."""
+    b: jax.numpy.ndarray = field(repr=False)
+    """Coefficients of the intermediate slopes."""
+    c: jax.numpy.ndarray = field(repr=False)
+    """Coefficients of the intermediate times."""
 
     @property
     def is_explicit(self):
+        """Boolean indication whether the integrator is explicit."""
         jnp.allclose(self.a, jnp.tril(self.a))  # check if lower triangular
 
     @property
     def is_adaptive(self):
+        """Boolean indication whether the integrator can beå adaptive."""
         return self.b.ndim == 2
 
     @property
@@ -85,7 +65,7 @@ class TableauRKExplicit:
     def stages(self):
         """
         Number of stages (equal to the number of evaluations of the ode function)
-        of the RK scheme.
+        of the scheme.
         """
         return len(self.c)
 
@@ -114,34 +94,31 @@ class TableauRKExplicit:
 
         k = expand_dim(y_t, self.stages)
         for l in range(self.stages):
-            dy_l = jax.tree_util.tree_map(
+            dy_l = tree_map(
                 lambda k: jnp.tensordot(
                     jnp.asarray(self.a[l], dtype=k.dtype), k, axes=1
                 ),
                 k,
             )
-            y_l = jax.tree_util.tree_map(
+            y_l = tree_map(
                 lambda y_t, dy_l: jnp.asarray(y_t + dt * dy_l, dtype=dy_l.dtype),
                 y_t,
                 dy_l,
             )
             k_l = f(times[l], y_l, stage=l)
-            k = jax.tree_util.tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
+            k = tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
 
         return k
 
+    @partial(maybe_jax_jit, static_argnames=("f"))
     def step(
-        self,
-        f: Callable,
-        t: float,
-        dt: float,
-        y_t: Array,
+        self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
         """Perform one fixed-size RK step from `t` to `t + dt`."""
         k = self._compute_slopes(f, t, dt, y_t)
 
         b = self.b[0] if self.b.ndim == 2 else self.b
-        y_tp1 = jax.tree_util.tree_map(
+        y_tp1 = tree_map(
             lambda y_t, k: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(b, dtype=k.dtype), k, axes=1),
@@ -151,12 +128,9 @@ class TableauRKExplicit:
 
         return y_tp1
 
+    @partial(maybe_jax_jit, static_argnames=("f"))
     def step_with_error(
-        self,
-        f: Callable,
-        t: float,
-        dt: float,
-        y_t: Array,
+        self, f: Callable, t: float, dt: float, y_t: Array, state: IntegratorState
     ):
         """
         Perform one fixed-size RK step from `t` to `t + dt` and additionally return the
@@ -167,7 +141,7 @@ class TableauRKExplicit:
 
         k = self._compute_slopes(f, t, dt, y_t)
 
-        y_tp1 = jax.tree_util.tree_map(
+        y_tp1 = tree_map(
             lambda y_t, k: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(self.b[0], dtype=k.dtype), k, axes=1),
@@ -175,22 +149,13 @@ class TableauRKExplicit:
             k,
         )
         db = self.b[0] - self.b[1]
-        y_err = jax.tree_util.tree_map(
+        y_err = tree_map(
             lambda k: jnp.asarray(dt, dtype=k.dtype)
             * jnp.tensordot(jnp.asarray(db, dtype=k.dtype), k, axes=1),
             k,
         )
 
         return y_tp1, y_err
-
-
-@dataclass
-class NamedTableau:
-    name: str
-    data: TableauRKExplicit
-
-    def __repr__(self) -> str:
-        return self.name
 
 
 # fmt: off
@@ -202,9 +167,8 @@ bt_feuler = TableauRKExplicit(
                 a = jnp.zeros((1,1), dtype=default_dtype),
                 b = jnp.ones((1,), dtype=default_dtype),
                 c = jnp.zeros((1), dtype=default_dtype),
-                c_error = None,
+                name = "Euler"
                 )
-bt_feuler = NamedTableau("Euler", bt_feuler)
 
 
 bt_midpoint = TableauRKExplicit(
@@ -213,9 +177,8 @@ bt_midpoint = TableauRKExplicit(
                                [1/2, 0]], dtype=default_dtype),
                 b = jnp.array( [0,   1], dtype=default_dtype),
                 c = jnp.array( [0, 1/2], dtype=default_dtype),
-                c_error = None,
+                name = "Midpoint"
                 )
-bt_midpoint = NamedTableau("Midpoint", bt_midpoint)
 
 
 bt_heun = TableauRKExplicit(
@@ -224,9 +187,8 @@ bt_heun = TableauRKExplicit(
                                [1,   0]], dtype=default_dtype),
                 b = jnp.array( [1/2, 1/2], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
-                c_error = None,
+                name = "Heun"
                 )
-bt_heun = NamedTableau("Heun", bt_heun)
 
 
 bt_rk4  = TableauRKExplicit(
@@ -237,9 +199,8 @@ bt_rk4  = TableauRKExplicit(
                                [0,   0,   1,   0]], dtype=default_dtype),
                 b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype),
-                c_error = None,
+                name = "RK4"
                 )
-bt_rk4 = NamedTableau("RK4", bt_rk4)
 
 
 # Adaptive step:
@@ -251,14 +212,13 @@ bt_rk12  = TableauRKExplicit(
                 b = jnp.array([[1/2, 1/2],
                                [1,   0]], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
-                c_error = None,
+                name = "RK12"
                 )
-bt_rk12 = NamedTableau("RK12", bt_rk12)
 
 
 # Bogacki–Shampine coefficients
 bt_rk23  = TableauRKExplicit(
-                order = (2,3),
+                order = (3,2),
                 a = jnp.array([[0,   0,   0,   0],
                                [1/2, 0,   0,   0],
                                [0,   3/4, 0,   0],
@@ -266,13 +226,12 @@ bt_rk23  = TableauRKExplicit(
                 b = jnp.array([[7/24,1/4, 1/3, 1/8],
                                [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
-                c_error = None,
+                name = "RK23"
                 )
-bt_rk23 = NamedTableau("RK23", bt_rk23)
 
 
 bt_rk4_fehlberg = TableauRKExplicit(
-                order = (4,5),
+                order = (5,4),
                 a = jnp.array([[ 0,          0,          0,           0,            0,      0 ],
                               [  1/4,        0,          0,           0,            0,      0 ],
                               [  3/32,       9/32,       0,           0,            0,      0 ],
@@ -282,9 +241,8 @@ bt_rk4_fehlberg = TableauRKExplicit(
                 b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
                                [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
                 c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
-                c_error = None,
+                name = "RK45Fehlberg"
                 )
-bt_rk4_fehlberg = NamedTableau("RK45Fehlberg", bt_rk4_fehlberg)
 
 
 bt_rk4_dopri  = TableauRKExplicit(
@@ -299,8 +257,5 @@ bt_rk4_dopri  = TableauRKExplicit(
                 b = jnp.array([[ 35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ],
                                [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
                 c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype),
-                c_error = None,
+                name = "RK45"
                 )
-bt_rk4_dopri = NamedTableau("RK45", bt_rk4_dopri)
-
-# fmt: on

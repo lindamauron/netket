@@ -49,16 +49,20 @@ def _setup_system(L, *, model=None, dtype=np.complex128):
     return ha, vs, obs
 
 
-def _stop_after_one_step(step, *_):
-    """
-    Callback to stop the driver after the first (successful) step.
-    """
-    return step == 0
+def _stop_after_n_steps(n):
+    def cb(step, *_):
+        """
+        Callback to stop the driver after the first (successful) step.
+        """
+        return step <= n
+
+    return cb
 
 
 fixed_step_integrators = [
     pytest.param(nkx.dynamics.Euler(dt=0.01), id="Euler(dt=0.01)"),
     pytest.param(nkx.dynamics.Heun(dt=0.01), id="Heun(dt=0.01)"),
+    pytest.param(nkx.dynamics.ABM(dt=0.01, order=4), id="ABM4(dt=0.01)"),
 ]
 adaptive_step_integrators = [
     pytest.param(
@@ -68,6 +72,10 @@ adaptive_step_integrators = [
     pytest.param(
         nkx.dynamics.RK45(dt=0.01, adaptive=True, rtol=1e-3, atol=1e-3),
         id="RK45(dt=0.01, adaptive)",
+    ),
+    pytest.param(
+        nkx.dynamics.ABM(dt=0.01, order=4, adaptive=True, rtol=1e-3, atol=1e-3),
+        id="ABM4(dt=0.01, adaptive)",
     ),
 ]
 all_integrators = fixed_step_integrators + adaptive_step_integrators
@@ -82,18 +90,20 @@ nqs_models = [
 @pytest.mark.parametrize("model", nqs_models)
 @pytest.mark.parametrize("integrator", fixed_step_integrators)
 @pytest.mark.parametrize("propagation_type", ["real", "imag"])
-def test_one_fixed_step(model, integrator, propagation_type):
-    ha, vstate, _ = _setup_system(L=2, model=model)
-    holomorphic = jnp.issubdtype(vstate.model.param_dtype, jnp.complexfloating)
-    te = nkx.TDVP(
-        ha,
-        vstate,
-        integrator,
-        qgt=nk.optimizer.qgt.QGTJacobianDense(holomorphic=holomorphic),
-        propagation_type=propagation_type,
-    )
-    te.run(T=0.01, callback=_stop_after_one_step)
-    assert te.t == 0.01
+@pytest.mark.parametrize("disable_jit", [False, True])
+def test_fixed_step(model, integrator, propagation_type, disable_jit):
+    with common.set_config("NETKET_EXPERIMENTAL_DISABLE_ODE_JIT", disable_jit):
+        ha, vstate, _ = _setup_system(L=2, model=model)
+        holomorphic = jnp.issubdtype(vstate.model.param_dtype, jnp.complexfloating)
+        te = nkx.TDVP(
+            ha,
+            vstate,
+            integrator,
+            qgt=nk.optimizer.qgt.QGTJacobianDense(holomorphic=holomorphic),
+            propagation_type=propagation_type,
+        )
+        te.run(T=0.01, callback=_stop_after_n_steps(5))
+        assert te.t == 0.01
 
 
 def l4_norm(x):
@@ -110,7 +120,7 @@ def l4_norm(x):
 @pytest.mark.parametrize("integrator", adaptive_step_integrators)
 @pytest.mark.parametrize("propagation_type", ["real", "imag"])
 @pytest.mark.parametrize("disable_jit", [False, True])
-def test_one_adaptive_step(integrator, error_norm, propagation_type, disable_jit):
+def test_adaptive_step(integrator, error_norm, propagation_type, disable_jit):
     with common.set_config("NETKET_EXPERIMENTAL_DISABLE_ODE_JIT", disable_jit):
         ha, vstate, _ = _setup_system(L=2)
         te = nkx.TDVP(
@@ -121,7 +131,7 @@ def test_one_adaptive_step(integrator, error_norm, propagation_type, disable_jit
             propagation_type=propagation_type,
             error_norm=error_norm,
         )
-        te.run(T=0.01, callback=_stop_after_one_step)
+        te.run(T=0.01, callback=_stop_after_n_steps(5))
         assert te.t > 0.0
 
 
@@ -136,7 +146,7 @@ def test_one_adaptive_schmitt(integrator, error_norm):
             integrator,
             error_norm=error_norm,
         )
-        te.run(T=0.01, callback=_stop_after_one_step)
+        te.run(T=0.01, callback=_stop_after_n_steps(1))
         assert te.t > 0.0
 
 
@@ -176,7 +186,7 @@ def test_one_step_lindbladian(integrator):
         propagation_type="real",
         linear_solver=partial(nk.optimizer.solver.svd, rcond=1e-3),
     )
-    te.run(T=0.01, callback=_stop_after_one_step)
+    te.run(T=0.01, callback=_stop_after_n_steps(1))
     assert te.t > 0.0
 
 
@@ -188,8 +198,8 @@ def test_dt_bounds():
         nkx.dynamics.RK23(dt=0.1, adaptive=True, dt_limits=(1e-2, None)),
         propagation_type="real",
     )
-    with pytest.warns(UserWarning, match="RK solver: dt reached lower bound"):
-        te.run(T=0.1, callback=_stop_after_one_step)
+    with pytest.warns(UserWarning, match="ODE solver: dt reached lower bound"):
+        te.run(T=0.1, callback=_stop_after_n_steps(1))
 
 
 @pytest.mark.parametrize("integrator", all_integrators)
