@@ -90,19 +90,19 @@ class TableauRKExplicit(Tableau):
 
         k = expand_dim(y_t, self.stages)
         for l in range(self.stages):
-            dy_l = jax.tree_map(
+            dy_l = jax.tree_util.tree_map(
                 lambda k: jnp.tensordot(
                     jnp.asarray(self.a[l], dtype=k.dtype), k, axes=1
                 ),
                 k,
             )
-            y_l = jax.tree_map(
+            y_l = jax.tree_util.tree_map(
                 lambda y_t, dy_l: jnp.asarray(y_t + dt * dy_l, dtype=dy_l.dtype),
                 y_t,
                 dy_l,
             )
             k_l = f(times[l], y_l, stage=l)
-            k = jax.tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
+            k = jax.tree_util.tree_map(lambda k, k_l: k.at[l].set(k_l), k, k_l)
 
         return k
 
@@ -114,7 +114,7 @@ class TableauRKExplicit(Tableau):
         k = self._compute_slopes(f, t, dt, y_t)
 
         b = self.b[0] if self.b.ndim == 2 else self.b
-        y_tp1 = jax.tree_map(
+        y_tp1 = jax.tree_util.tree_map(
             lambda y_t, k: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(b, dtype=k.dtype), k, axes=1),
@@ -137,7 +137,7 @@ class TableauRKExplicit(Tableau):
 
         k = self._compute_slopes(f, t, dt, y_t)
 
-        y_tp1 = jax.tree_map(
+        y_tp1 = jax.tree_util.tree_map(
             lambda y_t, k: y_t
             + jnp.asarray(dt, dtype=y_t.dtype)
             * jnp.tensordot(jnp.asarray(self.b[0], dtype=k.dtype), k, axes=1),
@@ -145,7 +145,7 @@ class TableauRKExplicit(Tableau):
             k,
         )
         db = self.b[0] - self.b[1]
-        y_err = jax.tree_map(
+        y_err = jax.tree_util.tree_map(
             lambda k: jnp.asarray(dt, dtype=k.dtype)
             * jnp.tensordot(jnp.asarray(db, dtype=k.dtype), k, axes=1),
             k,

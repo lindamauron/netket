@@ -241,7 +241,7 @@ class MCState(VariationalState):
             key, key2 = jax.random.split(nkjax.PRNGKey(seed), 2)
             sampler_seed = key2
 
-        self._sampler_seed = sampler_seed
+        self._sampler_seed = nkjax.PRNGKey(sampler_seed)
         self.sampler = sampler
 
         if n_samples is not None:
@@ -275,12 +275,22 @@ class MCState(VariationalState):
 
     @property
     def model(self) -> Optional[Any]:
-        """Returns the model definition of this variational state.
-
-        This field is optional, and is set to `None` if the variational state has
-        been initialized using a custom function.
-        """
+        """Returns the model definition of this variational state."""
         return self._model
+
+    @property
+    def _sampler_model(self):
+        """Returns the model definition used for sampling this variational state.
+        Equal to `.model`.
+        """
+        return self.model
+
+    @property
+    def _sampler_variables(self):
+        """Returns the variables used for sampling this variational state.
+        Equal to `.variables`
+        """
+        return self.variables
 
     @property
     def sampler(self) -> Sampler:
@@ -291,10 +301,10 @@ class MCState(VariationalState):
     def sampler(self, sampler: Sampler):
         if not isinstance(sampler, Sampler):
             raise TypeError(
-                "The sampler should be a subtype of netket.sampler.Sampler, but {} is not.".format(
-                    type(sampler)
-                )
+                f"The sampler should be a subtype of netket.sampler.Sampler, but {type(sampler)} is not."
             )
+
+        self._sampler_seed, seed = jax.random.split(self._sampler_seed, 2)
 
         # Save the old `n_samples` before the new `sampler` is set.
         # `_chain_length == 0` means that this `MCState` is being constructed.
@@ -303,7 +313,7 @@ class MCState(VariationalState):
 
         self._sampler = sampler
         self.sampler_state = self.sampler.init_state(
-            self.model, self.variables, seed=self._sampler_seed
+            self._sampler_model, self._sampler_variables, seed=seed
         )
         self._sampler_state_previous = self.sampler_state
 
@@ -370,9 +380,7 @@ class MCState(VariationalState):
     def n_discard_per_chain(self, n_discard_per_chain: Optional[int]):
         if n_discard_per_chain is not None and n_discard_per_chain < 0:
             raise ValueError(
-                "Invalid number of discarded samples: n_discard_per_chain={}".format(
-                    n_discard_per_chain
-                )
+                f"Invalid number of discarded samples: n_discard_per_chain={n_discard_per_chain}"
             )
 
         # don't discard if the sampler is exact
@@ -421,8 +429,8 @@ class MCState(VariationalState):
             self._chunk_size = None
             return
 
-        if chunk_size <= 0:
-            raise ValueError("Chunk size must be a positive integer. ")
+        if not isinstance(chunk_size, int) or chunk_size <= 0:
+            raise ValueError("Chunk size must be a positive INTEGER. ")
 
         if not _is_power_of_two(chunk_size):
             warnings.warn(
@@ -479,7 +487,7 @@ class MCState(VariationalState):
         self._sampler_state_previous = self.sampler_state
 
         self.sampler_state = self.sampler.reset(
-            self.model, self.variables, self.sampler_state
+            self._sampler_model, self._sampler_variables, self.sampler_state
         )
 
         if self.n_discard_per_chain > 0:
@@ -492,8 +500,8 @@ class MCState(VariationalState):
                 )
 
         self._samples, self.sampler_state = self.sampler.sample(
-            self.model,
-            self.variables,
+            self._sampler_model,
+            self._sampler_variables,
             state=self.sampler_state,
             chain_length=chain_length,
         )
