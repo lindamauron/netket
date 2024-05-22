@@ -5,10 +5,10 @@ import jax
 import jax.numpy as jnp
 from jax.tree_util import tree_map
 
-from netket.utils.struct import dataclass
+from netket.utils.struct import dataclass, field
 from netket.utils.types import Array
 from .._structures import expand_dim, maybe_jax_jit
-from .._tableau import Tableau, NamedTableau
+from .._tableau import Tableau
 from ._state import ABMState
 
 default_dtype = jnp.float64
@@ -43,9 +43,9 @@ class TableauABM(Tableau):
     [3] https://en.wikipedia.org/wiki/Linear_multistep_method
     """
 
-    betas: jax.numpy.ndarray
+    betas: jax.numpy.ndarray = field(repr=False)
     """Coefficients for the predictor step."""
-    alphas: jax.numpy.ndarray
+    alphas: jax.numpy.ndarray = field(repr=False)
     """Coefficients for the corrector step."""
 
     @property
@@ -76,17 +76,6 @@ class TableauABM(Tableau):
             return None
         else:
             return self.order + 1
-
-    def __repr__(self):
-        return self.name
-
-    @property
-    def name(self):
-        """The name of the tableau."""
-        if self.is_explicit:
-            return f"AB{self.order}"
-        else:
-            return f"ABM{self.order}"
 
     def step(self, f: Callable, t: float, dt: float, y_t: Array, state: ABMState):
         """Perform one fixed-size ABM step from `t` to `t + dt`."""
@@ -290,7 +279,7 @@ order = s
 :math: `\beta_{s+1-i} = \int_{0}^1 \prod_{l=0 ,l \n eq i}^q \frac{u+l}{l-i} du, i=1,\dots,s`
 :math: `\alpha_{i} = \int_{-1}^0 \prod_{l=0 ,l \n eq i}^q \frac{u+l}{l-i} du, i=0,\dots,s-1`
 
-then, instantiate as TableauABM(order=s, betas=jnp.array(betas), alphas=jnp.array(alphas))
+then, instantiate as TableauABM(order=s, betas=jnp.array(betas), alphas=jnp.array(alphas), name="MyTableau")
 """
 
 
@@ -397,8 +386,9 @@ def abm(order):
     ABM tableau for a given order.
     """
     if order in list(alphas.keys()):
-        tab = TableauABM(order=order, alphas=alphas[order], betas=betas[order])
-        return NamedTableau(f"ABM{order}", tab)
+        return TableauABM(
+            order=order, alphas=alphas[order], betas=betas[order], name=f"ABM{order}"
+        )
     else:
         raise NotImplementedError(
             f"The coefficients for a Adams-Bashforth-Moulton of order {order} have not been implemented yet, you need to compute them yourself"
@@ -410,10 +400,12 @@ def ab(order):
     AB tableau for a given order.
     """
     if order in list(betas.keys()):
-        tab = TableauABM(
-            order=order, betas=betas[order], alphas=jnp.zeros(order, default_dtype)
+        return TableauABM(
+            order=order,
+            betas=betas[order],
+            alphas=jnp.zeros(order, default_dtype),
+            name=f"AB{order}",
         )
-        return NamedTableau(f"AB{order}", tab)
     else:
         raise NotImplementedError(
             f"The coefficients for a Adams-Bashforth of order {order} have not been implemented yet, you need to compute them yourself"

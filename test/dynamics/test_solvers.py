@@ -93,45 +93,41 @@ adaptive_solvers_params = [
 def test_tableau_rk(tableau: str):
     assert tableau.name != ""
 
-    td = tableau.data
-
-    for x in td.a, td.b, td.c:
+    for x in tableau.a, tableau.b, tableau.c:
         assert np.all(np.isfinite(x))
 
-    assert td.a.ndim == 2
+    assert tableau.a.ndim == 2
     # a should be strictly upper triangular
-    np.testing.assert_array_equal(np.triu(td.a), np.zeros_like(td.a))
+    np.testing.assert_array_equal(np.triu(tableau.a), np.zeros_like(tableau.a))
     # c's should be in [0, 1]
-    assert np.all(td.c >= 0.0)
-    assert np.all(td.c <= 1.0)
+    assert np.all(tableau.c >= 0.0)
+    assert np.all(tableau.c <= 1.0)
 
-    assert len(td.order) in (1, 2)
-    assert len(td.order) == td.b.ndim
+    assert len(tableau.order) in (1, 2)
+    assert len(tableau.order) == tableau.b.ndim
 
-    assert td.a.shape[0] == td.a.shape[1]
-    assert td.a.shape[0] == td.b.shape[-1]
-    assert td.a.shape[0] == td.c.shape[0]
-    if len(td.order) == 2:
-        assert td.b.shape[0] == 2
+    assert tableau.a.shape[0] == tableau.a.shape[1]
+    assert tableau.a.shape[0] == tableau.b.shape[-1]
+    assert tableau.a.shape[0] == tableau.c.shape[0]
+    if len(tableau.order) == 2:
+        assert tableau.b.shape[0] == 2
 
 
 @pytest.mark.parametrize("tableau", tableaus_abm)
 def test_tableau_abm(tableau: str):
     assert tableau.name != ""
 
-    td = tableau.data
-
-    for x in td.alphas, td.betas:
+    for x in tableau.alphas, tableau.betas:
         assert np.all(np.isfinite(x))
 
-    assert td.alphas.shape == td.betas.shape
-    assert td.order == td.alphas.shape[0]
+    assert tableau.alphas.shape == tableau.betas.shape
+    assert tableau.order == tableau.alphas.shape[0]
 
-    assert td.alphas.ndim == 1
-    assert td.betas.ndim == 1
+    assert tableau.alphas.ndim == 1
+    assert tableau.betas.ndim == 1
     # the sum of alphas and betas should be 1
-    assert np.isclose(td.alphas.sum(), 1)
-    assert np.isclose(td.betas.sum(), 1)
+    assert np.isclose(tableau.alphas.sum(), 1)
+    assert np.isclose(tableau.betas.sum(), 1)
 
 
 # we skip the last fixed step solvers since they can be used with adaptive time-stepping
@@ -194,7 +190,8 @@ def test_ode_repr():
             return 1
 
         _test_jit_repr(solv._state)
-        # _test_jit_repr(solv)  # this is broken. should be fixed in the zukumft
+        _test_jit_repr(solv.tableau)
+        # _test_jit_repr(solv)  # this is broken. should be fixed in the zukunft
 
 
 def test_solver_t0_is_integer():

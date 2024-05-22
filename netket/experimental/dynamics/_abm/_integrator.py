@@ -119,7 +119,7 @@ class ABMIntegrator(Integrator):
 
         # generate the history of derivatives needed
         # there, F_history[0] contains the last derivatives
-        history = expand_dim(self.y0, self.tableau.data.order)
+        history = expand_dim(self.y0, self.tableau.order)
         history = tree_map(
             lambda H, x: H.at[0].set(x), history, self.f(self.t0, self.y0, stage=0)
         )
@@ -141,7 +141,7 @@ class ABMIntegrator(Integrator):
         Performs one full ABM step with a fixed time-step value code:`dt`
         """
         return abm_time_step_fixed(
-            tableau=self.tableau.data,
+            tableau=self.tableau,
             f=self.f,
             state=state,
             max_dt=max_dt,
@@ -152,7 +152,7 @@ class ABMIntegrator(Integrator):
         Performs one full ABM step with an adaptive time-step value code:`dt`
         """
         return abm_time_step_adaptive(
-            tableau=self.tableau.data,
+            tableau=self.tableau,
             f=self.f,
             state=state,
             atol=self.atol,

@@ -16,13 +16,13 @@ from ._structures import (
     set_flag_jax,
     euclidean_norm,
 )
-from ._tableau import Tableau, NamedTableau
+from ._tableau import Tableau
 from ._state import IntegratorState, SolverFlags
 
 
 # Since we don't know if the Tableau.step() is jitt-able, we don't jit the general_...
 # but the functions inside the tableau are jitted where it can be
-# ALso, we define a separate function to adapt the time step, so that one can be jitted
+# Also, we define a separate function to adapt the time step, so that one can be jitted
 def general_time_step_fixed(
     tableau: Tableau,
     f: Callable,
@@ -205,7 +205,7 @@ class Integrator:
     Given an ODE-function f, it integrates the derivatives to obtain the solution
     at the next time step.
     """
-    tableau: NamedTableau
+    tableau: Tableau
     """The tableau containing the integration coefficients."""
 
     f: Callable = field(repr=False)
@@ -277,7 +277,7 @@ class Integrator:
         Performs one full step with a fixed time-step value code:`dt`
         """
         return general_time_step_fixed(
-            tableau=self.tableau.data,
+            tableau=self.tableau,
             f=self.f,
             state=state,
             max_dt=max_dt,
@@ -288,7 +288,7 @@ class Integrator:
         Performs one full step with an adaptive time-step value code:`dt`
         """
         return general_time_step_adaptive(
-            tableau=self.tableau.data,
+            tableau=self.tableau,
             f=self.f,
             state=state,
             atol=self.atol,
@@ -344,7 +344,7 @@ class IntegratorConfig:
             tableau: The tableau of coefficients for the integration.
             adaptive: A boolean indicator whether to use an daaptive scheme.
         """
-        if not tableau.data.is_adaptive and adaptive:
+        if not tableau.is_adaptive and adaptive:
             raise ValueError(
                 "Cannot set `adaptive=True` for a non-adaptive integrator."
             )

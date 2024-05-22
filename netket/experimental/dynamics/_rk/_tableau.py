@@ -5,10 +5,10 @@ import jax
 import jax.numpy as jnp
 from jax.tree_util import tree_map
 
-from netket.utils.struct import dataclass
+from netket.utils.struct import dataclass, field
 from netket.utils.types import Array
 from .._structures import expand_dim, maybe_jax_jit
-from .._tableau import Tableau, NamedTableau
+from .._tableau import Tableau
 from .._state import IntegratorState
 
 default_dtype = jnp.float64
@@ -38,9 +38,12 @@ class TableauRKExplicit(Tableau):
     [2] J. Stoer and R. Bulirsch, Introduction to Numerical Analysis, Springer NY (2002)
     """
 
-    a: jax.numpy.ndarray
-    b: jax.numpy.ndarray
-    c: jax.numpy.ndarray
+    a: jax.numpy.ndarray = field(repr=False)
+    """Coefficients of th intermediate states."""
+    b: jax.numpy.ndarray = field(repr=False)
+    """Coefficients of the intermediate slopes."""
+    c: jax.numpy.ndarray = field(repr=False)
+    """Coefficients of the intermediate times."""
 
     @property
     def is_explicit(self):
@@ -164,8 +167,8 @@ bt_feuler = TableauRKExplicit(
                 a = jnp.zeros((1,1), dtype=default_dtype),
                 b = jnp.ones((1,), dtype=default_dtype),
                 c = jnp.zeros((1), dtype=default_dtype),
+                name = "Euler"
                 )
-bt_feuler = NamedTableau("Euler", bt_feuler)
 
 
 bt_midpoint = TableauRKExplicit(
@@ -174,8 +177,8 @@ bt_midpoint = TableauRKExplicit(
                                [1/2, 0]], dtype=default_dtype),
                 b = jnp.array( [0,   1], dtype=default_dtype),
                 c = jnp.array( [0, 1/2], dtype=default_dtype),
+                name = "Midpoint"
                 )
-bt_midpoint = NamedTableau("Midpoint", bt_midpoint)
 
 
 bt_heun = TableauRKExplicit(
@@ -184,8 +187,8 @@ bt_heun = TableauRKExplicit(
                                [1,   0]], dtype=default_dtype),
                 b = jnp.array( [1/2, 1/2], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
+                name = "Heun"
                 )
-bt_heun = NamedTableau("Heun", bt_heun)
 
 
 bt_rk4  = TableauRKExplicit(
@@ -196,8 +199,8 @@ bt_rk4  = TableauRKExplicit(
                                [0,   0,   1,   0]], dtype=default_dtype),
                 b = jnp.array( [1/6,  1/3,  1/3,  1/6], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 1/2, 1], dtype=default_dtype),
+                name = "RK4"
                 )
-bt_rk4 = NamedTableau("RK4", bt_rk4)
 
 
 # Adaptive step:
@@ -209,8 +212,8 @@ bt_rk12  = TableauRKExplicit(
                 b = jnp.array([[1/2, 1/2],
                                [1,   0]], dtype=default_dtype),
                 c = jnp.array( [0, 1], dtype=default_dtype),
+                name = "RK12"
                 )
-bt_rk12 = NamedTableau("RK12", bt_rk12)
 
 
 # Bogacki–Shampine coefficients
@@ -223,8 +226,8 @@ bt_rk23  = TableauRKExplicit(
                 b = jnp.array([[7/24,1/4, 1/3, 1/8],
                                [2/9, 1/3, 4/9, 0]], dtype=default_dtype),
                 c = jnp.array( [0, 1/2, 3/4, 1], dtype=default_dtype),
+                name = "RK23"
                 )
-bt_rk23 = NamedTableau("RK23", bt_rk23)
 
 
 bt_rk4_fehlberg = TableauRKExplicit(
@@ -238,8 +241,8 @@ bt_rk4_fehlberg = TableauRKExplicit(
                 b = jnp.array([[ 25/216,     0,          1408/2565,   2197/4104,    -1/5,   0 ],
                                [ 16/135,     0,          6656/12825,  28561/56430,  -9/50,  2/55]], dtype=default_dtype),
                 c = jnp.array( [  0,         1/4,        3/8,         12/13,        1,      1/2], dtype=default_dtype),
+                name = "RK45Fehlberg"
                 )
-bt_rk4_fehlberg = NamedTableau("RK45Fehlberg", bt_rk4_fehlberg)
 
 
 bt_rk4_dopri  = TableauRKExplicit(
@@ -254,5 +257,5 @@ bt_rk4_dopri  = TableauRKExplicit(
                 b = jnp.array([[ 35/384,      0,           500/1113,    125/192,  -2187/6784,    11/84,     0 ],
                                [ 5179/57600,  0,           7571/16695,  393/640,  -92097/339200, 187/2100,  1/40 ]], dtype=default_dtype),
                 c = jnp.array( [ 0,           1/5,         3/10,        4/5,      8/9,           1,         1], dtype=default_dtype),
+                name = "RK45"
                 )
-bt_rk4_dopri = NamedTableau("RK45", bt_rk4_dopri)
