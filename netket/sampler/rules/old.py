@@ -110,45 +110,49 @@ class MultipleRules(MetropolisRule):
         return tuple(rule_states)
 
     def transition(self, sampler, machine, parameters, state, key, σ):
-        n = len(self.probabilities)
-        print(n, sampler.n_batches)
-        keys = jax.random.split(key, n + 1)
+        N = len(self.probabilities)
+        keys = jax.random.split(key, N + 1)
+
+        σps = []
+        log_prob_corrs = []
+        for i in range(N):
+            # construct temporary rule state with correct sampler-state objects
+            _state = state.replace(rule_state=state.rule_state[i])
+
+            σps_i, log_prob_corr_i = self.rules[i].transition(
+                sampler, machine, parameters, _state, keys[i], σ
+            )
+
+            σps.append(σps_i)
+            log_prob_corrs.append(log_prob_corr_i)
 
         indices = jax.random.choice(
             keys[-1],
-            n,
+            N,
             shape=(sampler.n_batches,),
             p=self.probabilities,
         )
 
-        keys = jax.random.split(keys[0], sampler.n_batches)
+        # we use shard_map to avoid the all-gather emitted by the batched jnp.take / indexing
+        batch_select = sharding_decorator(
+            jax.vmap(partial(jnp.take, axis=0)), (True, True)
+        )
+        σp = batch_select(jnp.stack(σps, axis=1), indices)
 
-        transitions = [
-            lambda k, s: rule.transition(sampler, machine, parameters, state, k, s)
-            for rule in self.rules
-        ]
-
-        σp, log_prob_corrs = jax.vmap(
-            jax.lax.switch,
-            in_axes=(0, None, 0, 0),
-            out_axes=(1, 0)
-        )(indices, transitions, keys, jnp.expand_dims(σ, 1))
-
-        σp = σp.reshape(sampler.n_batches,-1)
-        if log_prob_corrs is not None and any(x is not None for x in log_prob_corrs):
-            log_prob_corr = jnp.array(
+        # if not all log_prob_corr are 0, convert the Nones to 0s
+        if any(x is not None for x in log_prob_corrs):
+            log_prob_corrs = jnp.stack(
                 [
-                    x if x is not None else 0.0
-                    for x in log_prob_corrs.reshape(sampler.n_batches)
+                    x if x is not None else jnp.zeros((sampler.n_batches,))
+                    for x in log_prob_corrs
                 ],
+                axis=1,
             )
-
+            log_prob_corr = batch_select(log_prob_corrs, indices)
         else:
             log_prob_corr = None
-        
 
         return σp, log_prob_corr
-
 
     def __repr__(self):
         return f"MultipleRules(probabilities={self.probabilities}, rules={self.rules})"
