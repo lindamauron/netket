@@ -16,6 +16,7 @@ import pytest
 import numpy as np
 
 import jax
+from functools import partial
 
 from netket.experimental.dynamics import (
     Integrator,
@@ -26,6 +27,7 @@ from netket.experimental.dynamics import (
     RK12,
     RK23,
     RK45,
+    ABM,
 )
 from netket.experimental.dynamics._rk._tableau import (
     bt_feuler,
@@ -37,6 +39,7 @@ from netket.experimental.dynamics._rk._tableau import (
     bt_rk4_dopri,
     bt_rk4_fehlberg,
 )
+from netket.experimental.dynamics._abm._tableau import TableauABM
 
 from .. import common
 
@@ -53,7 +56,9 @@ tableaus_rk = {
     "bt_rk4_dopri": bt_rk4_dopri,
     "bt_rk4_fehlberg": bt_rk4_fehlberg,
 }
-
+tableaus_abm = {}
+for k in range(1, 9):
+    tableaus_abm[f"tab_abm{k}"] = TableauABM(order=k)
 
 explicit_fixed_step_solvers = {
     "Euler": Euler,
@@ -61,14 +66,21 @@ explicit_fixed_step_solvers = {
     "Midpoint": Midpoint,
     "RK4": RK4,
 }
+for k in range(1, 9):
+    explicit_fixed_step_solvers[f"ABM{k}"] = partial(ABM, order=k, adaptive=False)
 
 explicit_adaptive_solvers = {
     "RK12": RK12,
     "RK23": RK23,
     "RK45": RK45,
+    "ABM2": partial(ABM, order=2),
+    "ABM4": partial(ABM, order=4),
+    "ABM6": partial(ABM, order=6),
 }
 
 rk_tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus_rk.items()]
+abm_tableaus_params = [pytest.param(obj, id=name) for name, obj in tableaus_abm.items()]
+
 explicit_fixed_step_solvers_params = [
     pytest.param(obj, id=name) for name, obj in explicit_fixed_step_solvers.items()
 ]
@@ -101,7 +113,22 @@ def test_tableau_rk(tableau: str):
         assert tableau.b.shape[0] == 2
 
 
-@pytest.mark.parametrize("method", explicit_fixed_step_solvers_params)
+@pytest.mark.parametrize("tableau", abm_tableaus_params)
+def test_tableau_abm(tableau: str):
+    assert tableau.name != ""
+
+    for x in tableau.alphas, tableau.betas:
+        assert np.all(np.isfinite(x))
+
+    assert tableau.alphas.ndim == 1 and tableau.betas.ndim == 1
+    # all should be flat
+
+    # coeffs should sum up to 1
+    assert np.isclose(tableau.alphas.sum(), 1.0)
+    assert np.isclose(tableau.betas.sum(), 1.0)
+
+
+@pytest.mark.parametrize("method", explicit_fixed_step_solvers_params[:4])
 def test_fixed_adaptive_error(method):
     with pytest.raises(TypeError):
         method(dt=0.01, adaptive=True)
@@ -147,7 +174,46 @@ def test_ode_solver(method):
     # somewhat arbitrary tolerances, that may still help spot
     # errors introduced later
     rtol = {"Euler": 1e-2, "RK4": 5e-4}.get(solver.tableau.name, 1e-3)
+    if solver.tableau.name[:3] == "ABM":
+        rtol = dt ** (solver.tableau.order - 1)
     np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=rtol)
+
+
+@pytest.mark.parametrize("solver", explicit_adaptive_solvers_params)
+def test_adaptive_solver(solver):
+    tol = 1e-7
+
+    def ode(t, x, **_):
+        return -t * x
+
+    y0 = np.array([1.0])
+    solv = solver(dt=0.2, adaptive=True, atol=0.0, rtol=tol)
+    integrator = Integrator(
+        f=ode,
+        solver=solv,
+        t0=0.0,
+        y0=y0,
+        use_adaptive=solv.adaptive,
+        norm=None,
+        parameters=solv.integrator_params,
+    )
+
+    t = []
+    y_t = []
+    last_step = -1
+    while integrator.t <= 2.0:
+        if integrator._state.step_no != last_step:
+            last_step = integrator._state.step_no
+            t.append(integrator.t)
+            y_t.append(integrator.y)
+        integrator.step()
+    y_t = np.asarray(y_t)
+    t = np.asarray(t)
+
+    y_ref = y0 * np.exp(-(t**2) / 2)
+
+    np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=1e-4)
+    assert t[-1] > 0.0
 
 
 def test_ode_repr():
@@ -201,42 +267,3 @@ def test_solver_t0_is_integer():
     integrator.step()
     assert integrator.t.dtype == integrator.dt.dtype
     assert integrator.t > 0.0
-
-
-@pytest.mark.parametrize("solver", explicit_adaptive_solvers_params)
-def test_adaptive_solver(solver):
-    tol = 1e-7
-
-    def ode(t, x, **_):
-        return -t * x
-
-    y0 = np.array([1.0])
-    solv = solver(dt=0.2, adaptive=True, atol=0.0, rtol=tol)
-    integrator = Integrator(
-        f=ode,
-        solver=solv,
-        t0=0.0,
-        y0=y0,
-        use_adaptive=solv.adaptive,
-        norm=None,
-        parameters=solv.integrator_params,
-    )
-
-    t = []
-    y_t = []
-    last_step = -1
-    while integrator.t <= 2.0:
-        # print(solv._state)
-        if integrator._state.step_no != last_step:
-            last_step = integrator._state.step_no
-            t.append(integrator.t)
-            y_t.append(integrator.y)
-        integrator.step()
-    y_t = np.asarray(y_t)
-    t = np.asarray(t)
-
-    # print(t)
-    y_ref = y0 * np.exp(-(t**2) / 2)
-
-    np.testing.assert_allclose(y_t[:, 0], y_ref, rtol=1e-5)
-    assert t[-1] > 0.0

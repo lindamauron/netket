@@ -25,12 +25,14 @@ __all__ = [
     "RK12",
     "RK23",
     "RK45",
+    "ABM",
 ]
 
 from ._solver import AbstractSolver, AbstractSolverState
 from ._integrator_state import IntegratorState
 from ._integrator import Integrator
 from ._rk._solver import Euler, Heun, Midpoint, RK4, RK12, RK23, RK45
+from ._abm._solver import ABM
 
 from netket.utils import _hide_submodules
 
